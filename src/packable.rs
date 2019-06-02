@@ -22,7 +22,8 @@ use core::mem;
 ///    * [`*mut i32`], on the other hand, uses the full 32 (or 64) bits, as raw
 ///      pointers are not guaranteed to be aligned.
 ///
-///      Use the helper [`Aligned`] type to promise raw pointer alignment.
+///      Use the helper [`Aligned`](crate::Aligned) type to promise raw pointer
+///      alignment.
 ///
 /// 3. Unused bits in the type's bit-representation are unconditionally `0`
 ///    bits.
@@ -66,8 +67,8 @@ pub unsafe trait Packable: Copy {
 
     /// Cast the binary representation value of this type into a `usize`.
     ///
-    /// This method must round-trip correctly with the
-    /// [`Packable::from_bits_unchecked`] method.
+    /// This method must round-trip correctly with the [`Packable::from_bits`]
+    /// method.
     fn to_bits(self) -> usize;
 }
 
