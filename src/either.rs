@@ -60,7 +60,7 @@ unsafe impl<L: Packable, R: Packable> Packable for TinyUnion<L, R> {
         <PtrPack<(R,)> as Packable>::BITS,
     );
 
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
+    unsafe fn from_bits(bits: usize) -> Self {
         TinyUnion { bits }
     }
     fn to_bits(self) -> usize {
@@ -81,6 +81,9 @@ pub enum Either<L, R> {
 /// [`Packable`] Enum of two `Packable` types.
 #[derive(Copy, Clone)]
 pub struct TinyEither<L: Packable, R: Packable> {
+    // FIXME: If `L` uses `NonNullStorage`, then our `TinyUnion` should be able
+    // to use it. We don't care about `R`, as even if it's nullable, the value
+    // will be non-null due to the bool being `True`.
     value: PtrPack<(TinyUnion<L, R>, bool)>,
 }
 
@@ -156,12 +159,12 @@ unsafe impl<L: Packable, R: Packable> Packable for TinyEither<L, R> {
 
     const BITS: u32 = <PtrPack<(TinyUnion<L, R>, bool)> as Packable>::BITS;
 
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
+    unsafe fn from_bits(bits: usize) -> Self {
         TinyEither {
             value: PtrPack::from_bits(bits),
         }
     }
     fn to_bits(self) -> usize {
-        self.value.get_bits()
+        self.value.to_bits()
     }
 }

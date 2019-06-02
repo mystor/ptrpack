@@ -9,7 +9,7 @@ use core::{cmp, fmt, hash, marker};
 /// [`Packable`]. Currently tuple sizes of up to 16 are supported. See
 /// [`Packable`] for more details on what types of values may be packed into a
 /// pointer.
-#[derive(Copy, Clone)]
+#[repr(transparent)]
 pub struct PtrPack<T: detail::PackableTuple> {
     data: T::Storage,
     _marker: marker::PhantomData<T>,
@@ -18,25 +18,33 @@ pub struct PtrPack<T: detail::PackableTuple> {
 impl<T: detail::PackableTuple> PtrPack<T> {
     /// Pack the given tuple into a pointer-sized value.
     pub fn new(tuple: T) -> Self {
-        let bits = T::tuple_to_tuple_bits(tuple);
+        let bits = T::to_tuple_bits(tuple);
         unsafe { Self::from_bits(bits) }
     }
 
-    pub fn as_tuple(self) -> T {
-        unsafe { T::tuple_bits_to_tuple(self.get_bits()) }
+    /// Extract the tuple value from this [`PtrPack`].
+    pub fn to_tuple(self) -> T {
+        unsafe { T::from_tuple_bits(self.to_bits()) }
     }
 
     /// Unsafely construct one of these values from bits.
     pub unsafe fn from_bits(bits: usize) -> Self {
         PtrPack {
-            data: detail::PointerStorage::from_bits_unchecked(bits),
+            data: detail::PointerStorage::from_bits(bits),
             _marker: marker::PhantomData,
         }
     }
 
     /// Unsafely convert one of these values to bits.
-    pub fn get_bits(&self) -> usize {
+    pub fn to_bits(self) -> usize {
         detail::PointerStorage::to_bits(self.data)
+    }
+}
+
+impl<T: detail::PackableTuple> Copy for PtrPack<T> {}
+impl<T: detail::PackableTuple> Clone for PtrPack<T> {
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
@@ -64,7 +72,7 @@ impl<T: detail::PackableTuple> hash::Hash for PtrPack<T> {
 
 impl<T: detail::PackableTuple + fmt::Debug> fmt::Debug for PtrPack<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("PtrPack").field(&self.as_tuple()).finish()
+        f.debug_tuple("PtrPack").field(&self.to_tuple()).finish()
     }
 }
 
@@ -78,10 +86,27 @@ where
 
     const BITS: u32 = detail::PTR_WIDTH - T::LAST_LOW_BIT;
 
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
+    unsafe fn from_bits(bits: usize) -> Self {
         Self::from_bits(bits)
     }
     fn to_bits(self) -> usize {
-        self.get_bits()
+        self.to_bits()
     }
+}
+
+#[test]
+fn test_packable() {
+    let x = 5u32;
+    let pack1 = <PtrPack<(&u32, bool, bool)>>::new((&x, false, true));
+    let pack2 = <PtrPack<(&u32, bool, bool)>>::new((&x, false, true));
+    assert_eq!(pack1, pack2);
+
+    assert_eq!(pack1.get_0() as *const _, &x as *const _);
+    assert_eq!(pack2.get_0() as *const _, &x as *const _);
+
+    assert_eq!(pack1.get_1(), false);
+    assert_eq!(pack2.get_1(), false);
+
+    assert_eq!(pack1.get_2(), true);
+    assert_eq!(pack2.get_2(), true);
 }

@@ -1,7 +1,7 @@
 //! Types requried to describe a [`Packable`] type.
 
 use crate::*;
-use core::{cmp, hash, ptr};
+use core::{cmp, hash, mem, ptr};
 
 mod private {
     pub trait Sealed {}
@@ -15,6 +15,17 @@ mod private {
     impl Sealed for super::HighBits {}
 }
 
+macro_rules! static_assert {
+    ($e:expr, $name:ident) => {
+        #[allow(non_upper_case_globals)]
+        #[allow(unused)]
+        const $name: [(); {
+            let cond: bool = $e;
+            !cond as usize
+        }] = [];
+    };
+}
+
 /// Pointer width on this platform, in bits.
 pub const PTR_WIDTH: u32 = 0usize.count_zeros();
 
@@ -23,12 +34,12 @@ pub const PTR_WIDTH: u32 = 0usize.count_zeros();
 /// It must be one of [`NonNullStorage`] or [`NullableStorage`], depending on
 /// whether the associated value has a valid bit-representation of all `0`s.
 pub unsafe trait PointerStorage:
-    Copy + cmp::Eq + cmp::Ord + hash::Hash + private::Sealed
+    Copy + cmp::Eq + cmp::Ord + hash::Hash + Send + Sync + private::Sealed
 {
     /// Create a `PointerStorage` from some bits.
     ///
     /// These bits must satisfy the nullability constraints of the storage type.
-    unsafe fn from_bits_unchecked(bits: usize) -> Self;
+    unsafe fn from_bits(bits: usize) -> Self;
 
     /// Get the bits stored in this `PointerStorage`.
     fn to_bits(self) -> usize;
@@ -39,7 +50,7 @@ pub unsafe trait PointerStorage:
 pub struct NonNullStorage(ptr::NonNull<()>);
 
 unsafe impl PointerStorage for NonNullStorage {
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
+    unsafe fn from_bits(bits: usize) -> Self {
         NonNullStorage(ptr::NonNull::new_unchecked(bits as *mut ()))
     }
 
@@ -51,12 +62,17 @@ unsafe impl PointerStorage for NonNullStorage {
 unsafe impl Sync for NonNullStorage {}
 unsafe impl Send for NonNullStorage {}
 
+static_assert!(
+    mem::size_of::<NonNullStorage>() == mem::size_of::<usize>(),
+    size_of_nonnull_is_usize
+);
+
 /// Storage for a [`usize`] value.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NullableStorage(usize);
 
 unsafe impl PointerStorage for NullableStorage {
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
+    unsafe fn from_bits(bits: usize) -> Self {
         NullableStorage(bits)
     }
 
@@ -64,6 +80,11 @@ unsafe impl PointerStorage for NullableStorage {
         self.0
     }
 }
+
+static_assert!(
+    mem::size_of::<NullableStorage>() == mem::size_of::<usize>(),
+    size_of_nullable_is_usize
+);
 
 /// Internal constant-providing type used by implementations of [`BitAlign`] for
 /// extra parameters and constants.
@@ -74,15 +95,21 @@ pub trait BitRange: private::Sealed {
     const HIGH_SHIFT: u32;
 }
 
-/// Mask for all bits up to, but not including, `high`.
-const fn low_mask(high: u32) -> usize {
-    (1usize << high) - 1
+/// Generate a mask for all bits in the non-inclusive range `low..high`.
+const fn range_mask(low: u32, high: u32) -> usize {
+    (u128::max_value() << low ^ u128::max_value() << high) as usize
 }
 
-/// Mask with all bits set starting at `low`, up to, but not including, `high`.
-const fn range_mask(low: u32, high: u32) -> usize {
-    low_mask(high) ^ low_mask(low)
-}
+static_assert!(range_mask(0, 0) == 0, mask_0_0);
+static_assert!(range_mask(3, 10) == 0b1111111000, mask_3_10);
+static_assert!(range_mask(32, 32) == 0, mask_32_32);
+
+#[cfg(target_pointer_width = "64")]
+static_assert!(range_mask(64, 64) == 0, mask_64_64);
+#[cfg(target_pointer_width = "64")]
+static_assert!(range_mask(0, 64) == usize::max_value(), mask_0_64);
+#[cfg(target_pointer_width = "64")]
+static_assert!(range_mask(60, 64) == 0xF000000000000000, mask_60_64);
 
 /// [`BitRange`] for the last element in the tuple `P`.
 #[doc(hidden)]
@@ -180,7 +207,7 @@ pub unsafe trait PackableTuple: Copy {
     #[doc(hidden)]
     #[inline]
     unsafe fn tuple_bits_to_last(tuple_bits: usize) -> Self::Last {
-        <Self::Last as Packable>::from_bits_unchecked(Self::tuple_bits_to_last_bits(tuple_bits))
+        <Self::Last as Packable>::from_bits(Self::tuple_bits_to_last_bits(tuple_bits))
     }
 
     #[doc(hidden)]
@@ -204,11 +231,11 @@ pub unsafe trait PackableTuple: Copy {
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize;
+    fn to_tuple_bits(self) -> usize;
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self;
+    unsafe fn from_tuple_bits(bits: usize) -> Self;
 }
 
 // FIXME: Is it even worth supporting packing the empty tuple?
@@ -229,13 +256,13 @@ unsafe impl PackableTuple for () {
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         0
     }
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(_: usize) -> Self {
+    unsafe fn from_tuple_bits(_: usize) -> Self {
         ()
     }
 }
@@ -243,3 +270,56 @@ unsafe impl PackableTuple for () {
 // NOTE: Directly include `tuples.rs` at the end to ensure that rustdoc reads
 // and places the generated inherent impls below the manually written ones.
 include!("tuples.rs");
+
+// 64-bit platform specific static assertions to ensure computations are correct.
+#[cfg(target_pointer_width = "64")]
+mod x64_test {
+    use super::*;
+
+    static_assert!(PTR_WIDTH == 64, ptr_width_64);
+
+    macro_rules! low_high_check {
+        ($name:ident, $t:ty => ($lo:expr, $hi:expr)) => {
+            #[allow(unused)]
+            #[allow(non_upper_case_globals)]
+            const $name: () = {
+                const LOW: [(); $lo as usize] = [(); <$t as PackableTuple>::LAST_LOW_BIT as usize];
+                const HIGH: [(); $hi as usize] =
+                    [(); <$t as PackableTuple>::LAST_HIGH_BIT as usize];
+                ()
+            };
+        };
+    }
+
+    low_high_check!(BOOL, (bool,) => (63, 64));
+    low_high_check!(BOOL_BOOL, (bool, bool) => (62, 63));
+
+    low_high_check!(REF_U64, (&u64,) => (3, 64));
+    low_high_check!(REF_U32, (&u32,) => (2, 64));
+    low_high_check!(REF_U16, (&u16,) => (1, 64));
+    low_high_check!(REF_U8, (&u8,) => (0, 64));
+
+    #[repr(align(1))]
+    struct Align1(());
+    #[repr(align(2))]
+    struct Align2(());
+    #[repr(align(4))]
+    struct Align4(());
+    #[repr(align(8))]
+    struct Align8(());
+    #[repr(align(16))]
+    struct Align16(());
+    #[repr(align(32))]
+    struct Align32(());
+
+    low_high_check!(ALIGN_1, (&Align1,) => (0, 64));
+    low_high_check!(ALIGN_2, (&Align2,) => (1, 64));
+    low_high_check!(ALIGN_4, (&Align4,) => (2, 64));
+    low_high_check!(ALIGN_8, (&Align8,) => (3, 64));
+    low_high_check!(ALIGN_16, (&Align16,) => (4, 64));
+    low_high_check!(ALIGN_32, (&Align32,) => (5, 64));
+
+    low_high_check!(ALIGN_8_BOOL, (&Align8, bool) => (2, 3));
+    low_high_check!(ALIGN_8_BOOL_BOOL, (&Align8, bool, bool) => (1, 2));
+    low_high_check!(ALIGN_8_BOOL_BOOL_BOOL, (&Align8, bool, bool, bool) => (0, 1));
+}

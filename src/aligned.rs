@@ -1,3 +1,4 @@
+use crate::{detail, Packable};
 use core::{cmp, fmt, hash, mem, ops, ptr};
 
 /// An aligned, non-null raw pointer.
@@ -7,8 +8,8 @@ use core::{cmp, fmt, hash, mem, ops, ptr};
 pub struct Aligned<T>(ptr::NonNull<T>);
 
 impl<T> Aligned<T> {
-    pub(crate) const FREE_BITS: u32 = mem::align_of::<T>().trailing_zeros();
-    pub(crate) const ALIGN_MASK: usize = (1usize << Self::FREE_BITS) - 1;
+    const FREE_BITS: u32 = mem::align_of::<T>().trailing_zeros();
+    const ALIGN_MASK: usize = (1usize << Self::FREE_BITS) - 1;
 
     pub fn new(ptr: ptr::NonNull<T>) -> Option<Self> {
         let value = ptr.as_ptr() as usize;
@@ -24,8 +25,9 @@ impl<T> Aligned<T> {
     }
 
     // FIXME: should be const eventually.
-    pub fn dangling() -> Self {
-        Aligned(ptr::NonNull::dangling())
+    pub const fn dangling() -> Self {
+        let dangling = mem::align_of::<T>() as *mut T;
+        unsafe { Self::new_unchecked(ptr::NonNull::new_unchecked(dangling)) }
     }
 
     pub const fn as_ptr(self) -> *mut T {
@@ -72,5 +74,19 @@ impl<T> hash::Hash for Aligned<T> {
 impl<T> fmt::Debug for Aligned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Aligned").field(&self.0.as_ptr()).finish()
+    }
+}
+
+unsafe impl<T> Packable for Aligned<T> {
+    type BitAlign = detail::HighBits;
+    type Storage = detail::NonNullStorage;
+
+    const BITS: u32 = detail::PTR_WIDTH - Self::FREE_BITS;
+
+    unsafe fn from_bits(bits: usize) -> Self {
+        mem::transmute::<usize, Self>(bits)
+    }
+    fn to_bits(self) -> usize {
+        unsafe { mem::transmute::<Self, usize>(self) }
     }
 }

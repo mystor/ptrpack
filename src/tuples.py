@@ -1,8 +1,11 @@
+#!/usr/bin/env python
+
 """
 Helper script. Generates relevant implementations for tuples.
 
 This is used instead of rust macros for clarity reasons.
 """
+
 
 import os
 
@@ -51,13 +54,13 @@ unsafe %(impl)s PackableTuple for %(tup)s {
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         %(tuplebits)s
     }
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             %(to_tuple)s,
         )
@@ -88,12 +91,12 @@ def gen_tuple(width):
 
 elt_getset_tmpl = """\
     pub fn get_%(idx)s(self) -> %(ty)s {
-        unsafe { <%(upto)s as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <%(upto)s as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_%(idx)s(self, value: %(ty)s) -> Self {
         let bits = <%(upto)s as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }

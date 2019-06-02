@@ -1,4 +1,4 @@
-use crate::{detail, Aligned};
+use crate::detail;
 use core::mem;
 
 /// Integral value which may leave spare `0` bits when stored in a [`usize`].
@@ -62,7 +62,7 @@ pub unsafe trait Packable: Copy {
     /// Cast the binary representation value from `bits` to this type.
     ///
     /// This method must round-trip correctly with the [`Packable::to_bits`] method.
-    unsafe fn from_bits_unchecked(bits: usize) -> Self;
+    unsafe fn from_bits(bits: usize) -> Self;
 
     /// Cast the binary representation value of this type into a `usize`.
     ///
@@ -77,7 +77,7 @@ unsafe impl Packable for () {
 
     const BITS: u32 = 0;
 
-    unsafe fn from_bits_unchecked(_: usize) -> Self {
+    unsafe fn from_bits(_: usize) -> Self {
         ()
     }
     fn to_bits(self) -> usize {
@@ -91,7 +91,7 @@ unsafe impl Packable for bool {
 
     const BITS: u32 = 1;
 
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
+    unsafe fn from_bits(bits: usize) -> Self {
         bits != 0
     }
     fn to_bits(self) -> usize {
@@ -105,21 +105,7 @@ unsafe impl<T> Packable for &T {
 
     const BITS: u32 = detail::PTR_WIDTH - mem::align_of::<T>().trailing_zeros();
 
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
-        mem::transmute::<usize, Self>(bits)
-    }
-    fn to_bits(self) -> usize {
-        unsafe { mem::transmute::<Self, usize>(self) }
-    }
-}
-
-unsafe impl<T> Packable for Aligned<T> {
-    type BitAlign = detail::HighBits;
-    type Storage = detail::NonNullStorage;
-
-    const BITS: u32 = detail::PTR_WIDTH - Self::FREE_BITS;
-
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
+    unsafe fn from_bits(bits: usize) -> Self {
         mem::transmute::<usize, Self>(bits)
     }
     fn to_bits(self) -> usize {
@@ -128,33 +114,23 @@ unsafe impl<T> Packable for Aligned<T> {
 }
 
 // We can store `Option<T>` in some cases, thanks to the null-pointer optimization.
-//
-// These are the same as the pointer cases above, except that `Storage` is now
-// `detail::NullableStorage.`
-unsafe impl<T> Packable for Option<&T> {
-    type BitAlign = detail::HighBits;
+// This is only possible for types which are marked as `NonNull`.
+unsafe impl<T> Packable for Option<T>
+where
+    T: Packable<Storage=detail::NonNullStorage>,
+{
+    type BitAlign = T::BitAlign;
     type Storage = detail::NullableStorage;
 
-    const BITS: u32 = detail::PTR_WIDTH - mem::align_of::<T>().trailing_zeros();
+    const BITS: u32 = T::BITS;
 
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
-        mem::transmute::<usize, Self>(bits)
+    unsafe fn from_bits(bits: usize) -> Self {
+        if bits == 0 { None } else { Some(T::from_bits(bits)) }
     }
     fn to_bits(self) -> usize {
-        unsafe { mem::transmute::<Self, usize>(self) }
-    }
-}
-
-unsafe impl<T> Packable for Option<Aligned<T>> {
-    type BitAlign = detail::HighBits;
-    type Storage = detail::NullableStorage;
-
-    const BITS: u32 = detail::PTR_WIDTH - mem::align_of::<T>().trailing_zeros();
-
-    unsafe fn from_bits_unchecked(bits: usize) -> Self {
-        mem::transmute::<usize, Self>(bits)
-    }
-    fn to_bits(self) -> usize {
-        unsafe { mem::transmute::<Self, usize>(self) }
+        match self {
+            Some(t) => T::to_bits(t),
+            None => 0,
+        }
     }
 }

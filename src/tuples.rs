@@ -20,13 +20,13 @@ unsafe impl<E0: Packable> PackableTuple for (E0,) {
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0)
     }
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
         )
@@ -34,12 +34,12 @@ unsafe impl<E0: Packable> PackableTuple for (E0,) {
 }
 impl<E0: Packable> PtrPack<(E0,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -63,14 +63,14 @@ unsafe impl<E0: Packable, E1: Packable> PackableTuple for (E0, E1,) {
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1)
     }
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -79,24 +79,24 @@ unsafe impl<E0: Packable, E1: Packable> PackableTuple for (E0, E1,) {
 }
 impl<E0: Packable, E1: Packable> PtrPack<(E0, E1,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -120,7 +120,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable> PackableTuple for (E0, E1,
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2)
@@ -128,7 +128,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable> PackableTuple for (E0, E1,
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -138,36 +138,36 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable> PackableTuple for (E0, E1,
 }
 impl<E0: Packable, E1: Packable, E2: Packable> PtrPack<(E0, E1, E2,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -191,7 +191,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable> PackableTupl
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -200,7 +200,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable> PackableTupl
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -211,48 +211,48 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable> PackableTupl
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable> PtrPack<(E0, E1, E2, E3,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -276,7 +276,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -286,7 +286,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -298,60 +298,60 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable> PtrPack<(E0, E1, E2, E3, E4,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -375,7 +375,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -386,7 +386,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -399,72 +399,72 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable> PtrPack<(E0, E1, E2, E3, E4, E5,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -488,7 +488,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -500,7 +500,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -514,84 +514,84 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -615,7 +615,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -628,7 +628,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -643,96 +643,96 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -756,7 +756,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -770,7 +770,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -786,108 +786,108 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -911,7 +911,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -926,7 +926,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -943,120 +943,120 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable, E9: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_9(self) -> E9 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_9(self, value: E9) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -1080,7 +1080,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -1096,7 +1096,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -1114,132 +1114,132 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable, E9: Packable, E10: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_9(self) -> E9 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_9(self, value: E9) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_10(self) -> E10 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_10(self, value: E10) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -1263,7 +1263,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -1280,7 +1280,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -1299,144 +1299,144 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable, E9: Packable, E10: Packable, E11: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_9(self) -> E9 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_9(self, value: E9) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_10(self) -> E10 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_10(self, value: E10) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_11(self) -> E11 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_11(self, value: E11) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -1460,7 +1460,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -1478,7 +1478,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -1498,156 +1498,156 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable, E9: Packable, E10: Packable, E11: Packable, E12: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_9(self) -> E9 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_9(self, value: E9) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_10(self) -> E10 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_10(self, value: E10) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_11(self) -> E11 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_11(self, value: E11) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_12(self) -> E12 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_12(self, value: E12) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -1671,7 +1671,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -1690,7 +1690,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -1711,168 +1711,168 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable, E9: Packable, E10: Packable, E11: Packable, E12: Packable, E13: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_9(self) -> E9 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_9(self, value: E9) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_10(self) -> E10 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_10(self, value: E10) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_11(self) -> E11 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_11(self, value: E11) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_12(self) -> E12 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_12(self, value: E12) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_13(self) -> E13 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_13(self, value: E13) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -1896,7 +1896,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -1916,7 +1916,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -1938,180 +1938,180 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable, E9: Packable, E10: Packable, E11: Packable, E12: Packable, E13: Packable, E14: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_9(self) -> E9 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_9(self, value: E9) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_10(self) -> E10 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_10(self, value: E10) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_11(self) -> E11 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_11(self, value: E11) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_12(self) -> E12 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_12(self, value: E12) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_13(self) -> E13 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_13(self, value: E13) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_14(self) -> E14 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_14(self, value: E14) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
@@ -2135,7 +2135,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    fn tuple_to_tuple_bits(self) -> usize {
+    fn to_tuple_bits(self) -> usize {
         <(E0,) as PackableTuple>::last_to_tuple_bits(self.0) |
             <(E0, E1,) as PackableTuple>::last_to_tuple_bits(self.1) |
             <(E0, E1, E2,) as PackableTuple>::last_to_tuple_bits(self.2) |
@@ -2156,7 +2156,7 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn tuple_bits_to_tuple(bits: usize) -> Self {
+    unsafe fn from_tuple_bits(bits: usize) -> Self {
         (
             <(E0,) as PackableTuple>::tuple_bits_to_last(bits),
             <(E0, E1,) as PackableTuple>::tuple_bits_to_last(bits),
@@ -2179,192 +2179,192 @@ unsafe impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable
 }
 impl<E0: Packable, E1: Packable, E2: Packable, E3: Packable, E4: Packable, E5: Packable, E6: Packable, E7: Packable, E8: Packable, E9: Packable, E10: Packable, E11: Packable, E12: Packable, E13: Packable, E14: Packable, E15: Packable> PtrPack<(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14, E15,)> {
     pub fn get_0(self) -> E0 {
-        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_0(self, value: E0) -> Self {
         let bits = <(E0,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_1(self) -> E1 {
-        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_1(self, value: E1) -> Self {
         let bits = <(E0, E1,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_2(self) -> E2 {
-        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_2(self, value: E2) -> Self {
         let bits = <(E0, E1, E2,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_3(self) -> E3 {
-        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_3(self, value: E3) -> Self {
         let bits = <(E0, E1, E2, E3,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_4(self) -> E4 {
-        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_4(self, value: E4) -> Self {
         let bits = <(E0, E1, E2, E3, E4,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_5(self) -> E5 {
-        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_5(self, value: E5) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_6(self) -> E6 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_6(self, value: E6) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_7(self) -> E7 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_7(self, value: E7) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_8(self) -> E8 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_8(self, value: E8) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_9(self) -> E9 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_9(self, value: E9) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_10(self) -> E10 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_10(self, value: E10) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_11(self) -> E11 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_11(self, value: E11) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_12(self) -> E12 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_12(self, value: E12) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_13(self) -> E13 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_13(self, value: E13) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_14(self) -> E14 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_14(self, value: E14) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
     }
 
     pub fn get_15(self) -> E15 {
-        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14, E15,) as PackableTuple>::tuple_bits_to_last(self.get_bits()) }
+        unsafe { <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14, E15,) as PackableTuple>::tuple_bits_to_last(self.to_bits()) }
     }
 
     pub fn update_15(self, value: E15) -> Self {
         let bits = <(E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14, E15,) as PackableTuple>::update_tuple_bits_with_last(
-            self.get_bits(),
+            self.to_bits(),
             value,
         );
         unsafe { Self::from_bits(bits) }
