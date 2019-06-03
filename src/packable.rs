@@ -100,6 +100,63 @@ unsafe impl Packable for bool {
     }
 }
 
+unsafe impl Packable for u8 {
+    type BitAlign = detail::LowBits;
+    type Storage = detail::NullableStorage;
+
+    const BITS: u32 = 8;
+
+    unsafe fn from_bits(bits: usize) -> Self {
+        bits as Self
+    }
+    fn to_bits(self) -> usize {
+        self as usize
+    }
+}
+
+unsafe impl Packable for u16 {
+    type BitAlign = detail::LowBits;
+    type Storage = detail::NullableStorage;
+
+    const BITS: u32 = 16;
+
+    unsafe fn from_bits(bits: usize) -> Self {
+        bits as Self
+    }
+    fn to_bits(self) -> usize {
+        self as usize
+    }
+}
+
+unsafe impl Packable for u32 {
+    type BitAlign = detail::LowBits;
+    type Storage = detail::NullableStorage;
+
+    const BITS: u32 = 32;
+
+    unsafe fn from_bits(bits: usize) -> Self {
+        bits as Self
+    }
+    fn to_bits(self) -> usize {
+        self as usize
+    }
+}
+
+#[cfg(target_pointer_width = "64")]
+unsafe impl Packable for u64 {
+    type BitAlign = detail::LowBits;
+    type Storage = detail::NullableStorage;
+
+    const BITS: u32 = 64;
+
+    unsafe fn from_bits(bits: usize) -> Self {
+        bits as Self
+    }
+    fn to_bits(self) -> usize {
+        self as usize
+    }
+}
+
 unsafe impl<T> Packable for &T {
     type BitAlign = detail::HighBits;
     type Storage = detail::NonNullStorage;
