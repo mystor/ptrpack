@@ -1,0 +1,15 @@
+[package]
+name = "pack_macros"
+version = "0.1.0"
+authors = ["Nika Layzell <nika@thelayzells.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "0.15", features = ["full"] }
+# synstructure = "0.10"
+synstructure = {path = "../../synstructure"}
+quote = "0.6"
+proc-macro2 = "0.4"
