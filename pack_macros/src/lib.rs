@@ -8,4 +8,3 @@ decl_derive!([Packable] => packable::derive_packable);
 
 #[cfg(test)]
 mod test;
-
