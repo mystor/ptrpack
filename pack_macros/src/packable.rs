@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
-use syn::Ident;
+use quote::{quote, format_ident, ToTokens};
+use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Generics, Ident, WherePredicate};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 fn used_bits(val: usize) -> u32 {
@@ -260,6 +260,133 @@ fn gen_discriminant(packed: &PackStructure) -> TokenStream {
             #[inline]
             unsafe fn unpack(packed: usize, _before: u32, after: u32) -> usize {
                 ::core::mem::transmute::<usize, Self>(packed.wrapping_shr(after))
+            }
+        }
+    }
+}
+
+fn add_pred(generics: &mut Generics, pred: WherePredicate) {
+    generics.make_where_clause().predicates.push(pred);
+}
+
+fn struct_data(
+    data: &DataStruct,
+    helper_impls: &mut TokenStream,
+    store_impl: &mut TokenStream,
+    load_impl: &mut TokenStream,
+    last_bitstart: &mut TokenStream,
+) {
+    panic!();
+}
+
+fn enum_data(
+    data: &DataEnum,
+    helper_impls: &mut TokenStream,
+    store_impl: &mut TokenStream,
+    load_impl: &mut TokenStream,
+    last_bitstart: &mut TokenStream,
+) {
+    panic!();
+}
+
+pub fn do_derive_packable(input: &DeriveInput) -> TokenStream {
+    // Introduce two additional generics for the impl.
+    let mut generics = input.generics.clone();
+    generics.params.push(parse_quote!(_PackRoot));
+    generics.params.push(parse_quote!(_PackStart));
+
+    add_pred(
+        &mut generics,
+        parse_quote! {
+            _PackRoot: pack::Packable<_PackRoot, pack::DefaultStart>
+        },
+    );
+    add_pred(
+        &mut generics,
+        parse_quote! {
+            _PackStart: pack::BitStart
+        },
+    );
+
+    let mut helper_impls = TokenStream::new();
+    let mut store_impl = TokenStream::new();
+    let mut load_impl = TokenStream::new();
+    let mut last_bitstart = TokenStream::new();
+
+    match &input.data {
+        Data::Struct(data) => {
+            struct_data(
+                data,
+                &mut helper_impls,
+                &mut store_impl,
+                &mut load_impl,
+                &mut last_bitstart,
+            );
+        }
+        Data::Enum(data) => {
+            enum_data(
+                data,
+                &mut helper_impls,
+                &mut store_impl,
+                &mut load_impl,
+                &mut last_bitstart,
+            );
+        }
+        Data::Union(_) => {
+            panic!("FIXME FIXME: Unsupported");
+        }
+    }
+
+    // Get the generics required for the impl.
+    let name = &input.ident;
+    let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
+    let (_, base_type_generics, _) = input.generics.split_for_impl();
+
+    let helper_name = format_ident!("Packed{}", name);
+    let helper_ty = quote!(#helper_name #type_generics);
+    let target_ty = quote!(#name #base_type_generics);
+    let subpack_ty = quote!(pack::SubPack<_PackRoot, _PackStart, #target_ty>);
+    quote! {
+        struct #helper_name #generics #where_clause {
+            inner: #subpack_ty,
+        }
+
+        impl #impl_generics #helper_ty #where_clause {
+            #helper_impls
+        }
+
+        impl #impl_generics ::core::ops::Deref for #helper_ty #where_clause {
+            type Target = #subpack_ty;
+
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
+
+        impl #impl_generics ::core::ops::DerefMut for #helper_ty #where_clause {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.inner
+            }
+        }
+
+        impl #impl_generics ::core::fmt::Debug for #helper_ty #where_clause {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.inner.fmt(f)
+            }
+        }
+
+        unsafe impl #impl_generics pack::Packable<_PackRoot, _PackStart> for #target_ty #where_clause
+        {
+            type Packed = #helper_ty;
+
+            const WIDTH: u32 = pack::PTR_WIDTH - <#last_bitstart as pack::BitStart>::START;
+
+            unsafe fn store(self, p: &mut #subpack_ty) {
+                #store_impl
+            }
+
+            unsafe fn load(p: &#subpack_ty) -> Self {
+                #load_impl
             }
         }
     }

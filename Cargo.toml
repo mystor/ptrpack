@@ -7,5 +7,10 @@ edition = "2018"
 [workspace]
 members = [ "pack_macros" ]
 
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
 [dependencies]
 pack_macros = { version = "0.1.0", path = "pack_macros" }

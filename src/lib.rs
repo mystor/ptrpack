@@ -1,17 +1,16 @@
-#![no_std]
+#![recursion_limit="128"]
 
-use core::hash::Hash;
-use core::num::NonZeroUsize;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+use core::fmt;
 use core::marker::PhantomData;
-use core::fmt::Debug;
-use core::mem;
+use core::mem::{self, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 
-mod internal {
-    pub trait Sealed {}
-    impl Sealed for usize {}
-    impl Sealed for core::num::NonZeroUsize {}
-}
+pub mod impls;
 
 /// Helper constant value of the width of a pointer in bits.
 #[doc(hidden)]
@@ -52,149 +51,236 @@ pub trait BitStart {
     const START: u32;
 }
 
+/// The default initial bit offset for a packed value.
 pub struct DefaultStart;
 impl BitStart for DefaultStart {
     const START: u32 = PTR_WIDTH;
 }
 
-/// # Packed
-pub unsafe trait Packed<S: BitStart> {
-    type Packable: Packable<S>;
+/// The next bit offset to use after a given value.
+pub struct NextStart<R, S, P> {
+    _marker: PhantomData<(R, S, P)>,
+}
+impl<R, S, P> BitStart for NextStart<R, S, P>
+where
+    R: Packable<R, DefaultStart>,
+    S: BitStart,
+    P: Packable<R, S>,
+{
+    const START: u32 = S::START - P::WIDTH;
+}
+
+pub struct UnionStart<A, B> {
+    _marker: PhantomData<(A, B)>,
+}
+impl<A, B> BitStart for UnionStart<A, B>
+where
+    A: BitStart,
+    B: BitStart,
+{
+    const START: u32 = const_min(A::START, B::START);
 }
 
 /// # Packable
-pub unsafe trait Packable<S: BitStart> {
-    type Packed: Packed<S>;
+pub unsafe trait Packable<R: Packable<R, DefaultStart>, S: BitStart>: Sized {
+    /// Must be a newtype around `Pack<R>` to provide inherent accessors for
+    /// specific data members.
+    type Packed;
 
+    /// Number of bits required to represent this value.
     const WIDTH: u32;
 
-    #[inline]
-    fn pack(&self) -> usize;
+    /// Directly store the bits for this value into the given `SubPack`.
+    unsafe fn store(self, p: &mut SubPack<R, S, Self>);
 
-    #[inline]
-    unsafe fn unpack(packed: usize) -> Self;
+    /// Directly read the bits for this value from the given `SubPack`.
+    unsafe fn load(p: &SubPack<R, S, Self>) -> Self;
 }
 
 /// # Pack
 #[repr(transparent)]
-pub struct Pack<P: Packable<DefaultStart>> {
+pub struct Pack<R> {
     value: usize,
-    marker: PhantomData<P>,
+    _marker: PhantomData<R>,
 }
 
-impl<P: Packable<DefaultStart>> Pack<P> {
-    
-}
-
-/// # Pack
-#[repr(transparent)]
-pub struct Pack<P, S = DefaultStart>
+impl<R> Pack<R>
 where
-    P: Packable<S>,
-    S: BitStart,
+    R: Packable<R, DefaultStart>,
 {
-    value: usize,
-    marker: PhantomData<(P, S)>,
-}
+    pub fn new(x: R) -> Self {
+        let mut pack = <ManuallyDrop<Self>>::new(Pack {
+            value: 0,
+            _marker: PhantomData,
+        });
 
-impl<P> Pack<P, DefaultStart>
-where
-    P: Packable<DefaultStart>,
-{
-    /// Construct a packed version of the given type
-    pub fn new(p: P) -> Self {
-        unimplemented!()
+        unsafe { x.store(pack.as_inner_pack_mut()) }
+
+        ManuallyDrop::into_inner(pack)
+    }
+
+    pub fn into_inner(self) -> R {
+        let this = ManuallyDrop::new(self);
+        unsafe { R::load(this.as_inner_pack()) }
+    }
+
+    pub fn get(&self) -> R
+    where
+        R: Copy,
+    {
+        self.as_inner_pack().get()
+    }
+
+    /// Directly read the stored bits.
+    pub fn get_bits(&self) -> usize {
+        self.value
+    }
+
+    /// Directly write the stored bits.
+    pub unsafe fn set_bits(&mut self, bits: usize) {
+        self.value = bits;
+    }
+
+    /// Inner helper method to downcast to `SubPack` for utility methods.
+    fn as_inner_pack(&self) -> &SubPack<R, DefaultStart, R> {
+        unsafe { mem::transmute(self) }
+    }
+
+    /// Inner helper method to downcast to `SubPack` for utility methods.
+    fn as_inner_pack_mut(&mut self) -> &mut SubPack<R, DefaultStart, R> {
+        unsafe { mem::transmute(self) }
     }
 }
 
-impl<P, S> Pack<P, S>
+impl<R> Deref for Pack<R>
 where
-    P: Packable<S>,
-    S: BitStart,
+    R: Packable<R, DefaultStart>,
 {
-    // --
-}
-
-impl<P, S> Deref for Pack<P, S>
-where
-    P: Packable<S>,
-    S: BitStart,
-{
-    type Target = P::Packed;
+    type Target = R::Packed;
 
     fn deref(&self) -> &Self::Target {
         unsafe { mem::transmute(self) }
     }
 }
 
-impl<P, S> DerefMut for Pack<P, S>
+impl<R> DerefMut for Pack<R>
 where
-    P: Packable<S>,
-    S: BitStart,
+    R: Packable<R, DefaultStart>,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { mem::transmute(self) }
     }
 }
 
-
-
-/// Storage type used by `Packable`. This is either `usize` or `NonZeroUsize`.
-pub trait MaybeNonZeroUsize:
-    Copy + Clone + Send + Sync + Ord + PartialOrd + Hash + Eq + PartialEq + Debug + internal::Sealed
+impl<R> fmt::Debug for Pack<R>
+where
+    R: Packable<R, DefaultStart>,
 {
-    unsafe fn new_unchecked(value: usize) -> Self;
-    fn get(&self) -> usize;
-}
-
-impl MaybeNonZeroUsize for usize {
-    unsafe fn new_unchecked(packed: usize) -> Self {
-        packed
-    }
-    fn get(&self) -> usize {
-        *self
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Pack").field(&self.get_bits()).finish()
     }
 }
 
-impl MaybeNonZeroUsize for NonZeroUsize {
-    unsafe fn new_unchecked(packed: usize) -> Self {
-        NonZeroUsize::new_unchecked(packed)
+// XXX(nika): Consider adding more comparison operators?
+
+/// # Inner Pack
+#[repr(transparent)]
+pub struct SubPack<R, S, P> {
+    inner: Pack<R>,
+    _marker: PhantomData<(S, P)>,
+}
+
+impl<R, S, P> SubPack<R, S, P>
+where
+    R: Packable<R, DefaultStart>,
+    S: BitStart,
+    P: Packable<R, S>,
+{
+    pub const BEFORE: u32 = PTR_WIDTH - S::START;
+    pub const AFTER: u32 = S::START - P::WIDTH;
+    pub const MASK: usize = const_mask(Self::BEFORE, Self::AFTER);
+    pub const CLEAR_MASK: usize = !Self::MASK;
+
+    /// Read the value packed within this `SubPack`.
+    pub fn get(&self) -> P
+    where
+        P: Copy,
+    {
+        unsafe { P::load(self) }
     }
-    fn get(&self) -> usize {
-        NonZeroUsize::get(*self)
+
+    pub fn replace(&mut self, new: P) -> P {
+        unsafe {
+            let prev = ManuallyDrop::new(P::load(self));
+            new.store(self);
+            ManuallyDrop::into_inner(prev)
+        }
+    }
+
+    /// Masked read of the relevant bits from the underlying type.
+    pub fn get_bits(&self) -> usize {
+        self.inner.get_bits() & Self::MASK
+    }
+
+    /// Masked read of the relevant bits, shifted into the high bits of the
+    /// output, like an integer.
+    pub fn get_as_high_bits(&self) -> usize {
+        self.get_bits().wrapping_shl(Self::BEFORE)
+    }
+
+    /// Masked read of the relevant bits, shifted into the low bits of the
+    /// output, like a pointer.
+    pub fn get_as_low_bits(&self) -> usize {
+        self.get_bits().wrapping_shr(Self::AFTER)
+    }
+
+    /// Unsafely clears the bits corresponding to `P` in the inner `Pack<R>`,
+    /// and sets them to the provided bits.
+    pub unsafe fn set_bits(&mut self, bits: usize) {
+        let cleared = self.inner.get_bits() & Self::CLEAR_MASK;
+        self.inner.set_bits(cleared | bits);
+    }
+
+    /// Like `set_bits`, but the bits are shifted into place first.
+    pub unsafe fn set_from_high_bits(&mut self, bits: usize) {
+        self.set_bits(bits.wrapping_shr(Self::BEFORE));
+    }
+
+    /// Like `get_bits`, but the bits are shifted into place first.
+    pub unsafe fn set_from_low_bits(&mut self, bits: usize) {
+        self.set_bits(bits.wrapping_shl(Self::AFTER));
+    }
+
+    /// Cast the reference down to a field.
+    ///
+    /// This method is not intended for use outside of impls.
+    pub unsafe fn as_field<S2, T>(&self) -> &T::Packed
+    where
+        S2: BitStart,
+        T: Packable<R, S2>,
+    {
+        mem::transmute(self)
+    }
+
+    /// Cast the reference down to a field.
+    ///
+    /// This method is not intended for use outside of impls.
+    pub unsafe fn as_field_mut<S2, T>(&mut self) -> &mut T::Packed
+    where
+        S2: BitStart,
+        T: Packable<R, S2>,
+    {
+        mem::transmute(self)
     }
 }
 
-/// Helper trait used internally by `Packable`.
-pub trait BitRange {
-    /// Number of bits before the field.
-    const BEFORE: u32;
-
-    /// Number of bits after the field.
-    const AFTER: u32;
-
-    /// Mask for bits within the specified range.
-    const MASK: usize;
-}
-
-/// Compound bit range offset such that the inner `BitRange` is located inside
-/// of the outer `BitRange, left-aligned.`
-pub struct CompoundBitRange<Outer: BitRange, Inner: BitRange> {
-    marker: PhantomData<(Outer, Inner)>
-}
-
-impl<Outer: BitRange, Inner: BitRange> CompoundBitRange<Outer, Inner> {
-    const BEFORE: u32 = Inner::BEFORE + Outer::BEFORE;
-
-    const AFTER: u32 = Inner::AFTER - Outer::BEFORE;
-
-    const MASK: usize = const_mask(Self::BEFORE, Self::AFTER);
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+impl<R, S, P> fmt::Debug for SubPack<R, S, P>
+where
+    R: Packable<R, DefaultStart>,
+    S: BitStart,
+    P: Packable<R, S>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("SubPack").field(&self.get_bits()).finish()
     }
 }
