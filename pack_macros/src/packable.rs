@@ -2,6 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::fold::Fold;
 use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Ident, Lifetime};
+use syn::spanned::Spanned;
 
 /// The width of a pointer on the platform which is running this proc-macro.
 const HOST_PTR_WIDTH: u32 = 0usize.leading_zeros();
@@ -28,7 +29,7 @@ fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
             Some(name) => name.to_string(),
             None => idx.to_string(),
         };
-        let varname = format_ident!("_field_{}", fname_s);
+        let varname = format_ident!("_field_{}", fname_s, span = field.span());
 
         let bitstart = next_bitstart.clone();
         next_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
@@ -52,8 +53,8 @@ fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
         });
 
         // Helper Getter Methods
-        let get_field = format_ident!("get_{}", fname_s);
-        let get_field_mut = format_ident!("set_{}", fname_s);
+        let get_field = format_ident!("get_{}", fname_s, span = field.span());
+        let get_field_mut = format_ident!("set_{}", fname_s, span = field.span());
         helper_impls.extend(quote! {
             // It'd be lovely if I could use associated types here - these decls
             // can end up really long!
@@ -138,11 +139,9 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
                 // Update bitstart value for the discriminant.
                 let ty = &fields.unnamed[0].ty;
                 let after_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
-                discr_bitstart = Some(
-                    discr_bitstart
-                        .map(|bs| quote!(pack::UnionStart<#bs, #after_bitstart>))
-                        .unwrap_or_else(|| after_bitstart.clone()),
-                );
+                discr_bitstart = discr_bitstart
+                    .map(|bs| quote!(pack::UnionStart<#bs, #after_bitstart>))
+                    .or_else(|| Some(after_bitstart.clone()));
             }
             Fields::Unit => {}
         }
