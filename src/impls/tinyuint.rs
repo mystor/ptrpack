@@ -1,6 +1,5 @@
 use core::fmt;
 use crate::{Packable, SubPack, PackableRoot, BitStart};
-use crate::impls::PackedCopy;
 
 macro_rules! tiny_decl {
     ($(
@@ -35,22 +34,18 @@ macro_rules! tiny_decl {
             }
         }
 
-        unsafe impl<R, S> Packable<R, S> for $Uint
-        where
-            R: PackableRoot,
-            S: BitStart,
-        {
-            type Packed = PackedCopy<R, S, $Uint>;
+        unsafe impl<S: BitStart> Packable<S> for $Uint {
+            type Packed = SubPack<S, $Uint>;
 
             const WIDTH: u32 = $width;
 
             #[inline]
-            unsafe fn store(self, p: &mut SubPack<R, S, Self>) {
+            unsafe fn store(self, p: &mut SubPack<S, Self>) {
                 p.set_from_low_bits(self.0);
             }
 
             #[inline]
-            unsafe fn load(p: &SubPack<R, S, Self>) -> Self {
+            unsafe fn load(p: &SubPack<S, Self>) -> Self {
                 $Uint(p.get_as_low_bits())
             }
         }

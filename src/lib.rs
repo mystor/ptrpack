@@ -9,6 +9,7 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
+use core::cmp;
 
 pub mod impls;
 
@@ -49,24 +50,6 @@ pub const fn const_mask(before: u32, after: u32) -> usize {
 /// # BitStart
 pub trait BitStart {
     const START: u32;
-
-    unsafe fn read_raw<R, P>(root: &Pack<R>) -> P
-    where
-        R: PackableRoot,
-        P: Packable<R, Self>,
-        Self: Sized,
-    {
-        P::load(mem::transmute::<&Pack<R>, &SubPack<R, Self, P>>(root))
-    }
-
-    unsafe fn write_raw<R, P>(root: &mut Pack<R>, val: P)
-    where
-        R: PackableRoot,
-        P: Packable<R, Self>,
-        Self: Sized,
-    {
-        P::store(val, mem::transmute::<&mut Pack<R>, &mut SubPack<R, Self, P>>(root))
-    }
 }
 
 /// The default initial bit offset for a packed value.
@@ -76,14 +59,13 @@ impl BitStart for DefaultStart {
 }
 
 /// The next bit offset to use after a given value.
-pub struct NextStart<R, S, P> {
-    _marker: PhantomData<(R, S, P)>,
+pub struct NextStart<S, P> {
+    _marker: PhantomData<(S, P)>,
 }
-impl<R, S, P> BitStart for NextStart<R, S, P>
+impl<S, P> BitStart for NextStart<S, P>
 where
-    R: PackableRoot,
     S: BitStart,
-    P: Packable<R, S>,
+    P: Packable<S>,
 {
     const START: u32 = S::START - P::WIDTH;
 }
@@ -100,19 +82,17 @@ where
 }
 
 /// # Packable
-pub unsafe trait Packable<R: PackableRoot, S: BitStart>: Sized {
-    /// Must be a newtype around `Pack<R>` to provide inherent accessors for
-    /// specific data members.
+pub unsafe trait Packable<S: BitStart>: Sized {
     type Packed;
 
     /// Number of bits required to represent this value.
     const WIDTH: u32;
 
     /// Directly store the bits for this value into the given `SubPack`.
-    unsafe fn store(self, p: &mut SubPack<R, S, Self>);
+    unsafe fn store(self, p: &mut SubPack<S, Self>);
 
     /// Directly read the bits for this value from the given `SubPack`.
-    unsafe fn load(p: &SubPack<R, S, Self>) -> Self;
+    unsafe fn load(p: &SubPack<S, Self>) -> Self;
 }
 
 /// Types which may be packed as the root type within a [`Pack`].
@@ -120,7 +100,7 @@ pub unsafe trait Packable<R: PackableRoot, S: BitStart>: Sized {
 /// All types implementing [`Packable`] should also implement this trait. This
 /// separate implementation is needed to avoid infinite recursion when
 /// evaluating trait requirements for types stored in a `Pack`.
-pub unsafe trait PackableRoot : Packable<Self, DefaultStart> { }
+pub unsafe trait PackableRoot : Packable<DefaultStart> { }
 
 /// # Pack
 #[repr(transparent)]
@@ -164,12 +144,12 @@ impl<R: PackableRoot> Pack<R> {
     }
 
     /// Inner helper method to downcast to `SubPack` for utility methods.
-    fn as_inner_pack(&self) -> &SubPack<R, DefaultStart, R> {
+    fn as_inner_pack(&self) -> &SubPack<DefaultStart, R> {
         unsafe { mem::transmute(self) }
     }
 
     /// Inner helper method to downcast to `SubPack` for utility methods.
-    fn as_inner_pack_mut(&mut self) -> &mut SubPack<R, DefaultStart, R> {
+    fn as_inner_pack_mut(&mut self) -> &mut SubPack<DefaultStart, R> {
         unsafe { mem::transmute(self) }
     }
 }
@@ -194,22 +174,15 @@ impl<R: PackableRoot> fmt::Debug for Pack<R> {
     }
 }
 
-// XXX(nika): Consider adding more comparison operators?
-#[doc(hidden)]
-pub type PackedType<R: PackableRoot, S: BitStart, P: Packable<R, S>> = P::Packed;
-
 /// # Inner Pack
-#[repr(transparent)]
-pub struct SubPack<R, S, P> {
-    inner: Pack<R>,
+pub struct SubPack<S, P> {
     _marker: PhantomData<(S, P)>,
 }
 
-impl<R, S, P> SubPack<R, S, P>
+impl<S, P> SubPack<S, P>
 where
-    R: PackableRoot,
     S: BitStart,
-    P: Packable<R, S>,
+    P: Packable<S>,
 {
     pub const BEFORE: u32 = PTR_WIDTH - S::START;
     pub const AFTER: u32 = S::START - P::WIDTH;
@@ -240,19 +213,10 @@ where
         P::store(new, self)
     }
 
-    #[doc(hidden)]
-    pub fn as_root(&self) -> &Pack<R> {
-        &self.inner
-    }
-
-    #[doc(hidden)]
-    pub fn as_root_mut(&mut self) -> &mut Pack<R> {
-        &mut self.inner
-    }
-
     /// Masked read of the relevant bits from the underlying type.
     pub fn get_bits(&self) -> usize {
-        self.inner.get_bits() & Self::MASK
+        let bits_ptr = self as *const _ as *const usize;
+        unsafe { *bits_ptr & Self::MASK }
     }
 
     /// Masked read of the relevant bits, shifted into the high bits of the
@@ -270,8 +234,9 @@ where
     /// Unsafely clears the bits corresponding to `P` in the inner `Pack<R>`,
     /// and sets them to the provided bits.
     pub unsafe fn set_bits(&mut self, bits: usize) {
-        let cleared = self.inner.get_bits() & Self::CLEAR_MASK;
-        self.inner.set_bits(cleared | bits);
+        let bits_ptr = self as *mut _ as *mut usize;
+        let cleared = *bits_ptr & Self::CLEAR_MASK;
+        *bits_ptr = cleared | bits;
     }
 
     /// Like `set_bits`, but the bits are shifted into place first.
@@ -287,10 +252,10 @@ where
     /// Cast the reference down to a field.
     ///
     /// This method is not intended for use outside of impls.
-    pub unsafe fn as_field<S2, T>(&self) -> &SubPack<R, S2, T>
+    pub unsafe fn as_field<S2, T>(&self) -> &SubPack<S2, T>
     where
         S2: BitStart,
-        T: Packable<R, S2>,
+        T: Packable<S2>,
     {
         mem::transmute(self)
     }
@@ -298,10 +263,10 @@ where
     /// Cast the reference down to a field.
     ///
     /// This method is not intended for use outside of impls.
-    pub unsafe fn as_field_mut<S2, T>(&mut self) -> &mut SubPack<R, S2, T>
+    pub unsafe fn as_field_mut<S2, T>(&mut self) -> &mut SubPack<S2, T>
     where
         S2: BitStart,
-        T: Packable<R, S2>,
+        T: Packable<S2>,
     {
         mem::transmute(self)
     }
@@ -315,13 +280,69 @@ where
     }
 }
 
-impl<R, S, P> fmt::Debug for SubPack<R, S, P>
+impl<S, P> fmt::Debug for SubPack<S, P>
 where
-    R: PackableRoot,
     S: BitStart,
-    P: Packable<R, S>,
+    P: Packable<S>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("SubPack").field(&self.get_bits()).finish()
+    }
+}
+
+impl<S, P> cmp::PartialEq for SubPack<S, P>
+where
+    S: BitStart,
+    P: Packable<S> + Copy + cmp::PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.get().eq(&other.get())
+    }
+}
+
+impl<S, P> cmp::PartialEq<P> for SubPack<S, P>
+where
+    S: BitStart,
+    P: Packable<S> + Copy + cmp::PartialEq,
+{
+    fn eq(&self, other: &P) -> bool {
+        self.get().eq(other)
+    }
+}
+
+impl<S, P> cmp::Eq for SubPack<S, P>
+where
+    S: BitStart,
+    P: Packable<S> + Copy + cmp::Eq,
+{
+}
+
+impl<S, P> cmp::PartialOrd for SubPack<S, P>
+where
+    S: BitStart,
+    P: Packable<S> + Copy + cmp::PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.get().partial_cmp(&other.get())
+    }
+}
+
+impl<S, P> cmp::PartialOrd<P> for SubPack<S, P>
+where
+    S: BitStart,
+    P: Packable<S> + Copy + cmp::PartialOrd<P>,
+{
+    fn partial_cmp(&self, other: &P) -> Option<cmp::Ordering> {
+        self.get().partial_cmp(other)
+    }
+}
+
+impl<S, P> cmp::Ord for SubPack<S, P>
+where
+    S: BitStart,
+    P: Packable<S> + Copy + cmp::Ord,
+{
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.get().cmp(&other.get())
     }
 }

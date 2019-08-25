@@ -35,9 +35,9 @@ fn struct_data(
         let fname_get_mut = format_ident!("get_{}_mut", fname_s);
 
         let bitstart = last_bitstart.clone();
-        *last_bitstart = quote!(pack::NextStart<_PackRoot, #bitstart, #ty>);
+        *last_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
 
-        let ty_as_packable = quote!(#ty as pack::Packable<_PackRoot, #bitstart>);
+        let ty_as_packable = quote!(#ty as pack::Packable<#bitstart>);
 
         let as_field_mut = quote!(as_field_mut::<#bitstart, #ty>());
         let as_field = quote!(as_field::<#bitstart, #ty>());
@@ -72,7 +72,7 @@ fn struct_data(
                 unsafe { (self.#as_field).as_packed() }
             }
 
-            #vis fn #fname_get_mut(&mut self) -> &mut pack::PackedType<_PackRoot, #bitstart, #ty> {
+            #vis fn #fname_get_mut(&mut self) -> &mut <#ty_as_packable>::Packed {
                 unsafe { (self.#as_field_mut).as_packed_mut() }
             }
         });
@@ -147,25 +147,25 @@ fn enum_data(
                 let ty = &field.ty;
 
                 // Update bitstart value for the discriminant.
-                let after_bitstart = quote!(pack::NextStart<_PackRoot, #bitstart, #ty>);
+                let after_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
                 discr_bitstart = Some(
                     discr_bitstart
                         .map(|bs| quote!(pack::UnionStart<#bs, #after_bitstart>))
                         .unwrap_or_else(|| after_bitstart.clone())
                 );
 
-                let ty_as_packable = quote!(#ty as pack::Packable<_PackRoot, #bitstart>);
+                let ty_as_packable = quote!(#ty as pack::Packable<#bitstart>);
                 let as_field_mut = quote!(as_field_mut::<#bitstart, #ty>());
                 let as_field = quote!(as_field::<#bitstart, #ty>());
 
                 store_arms.extend(quote! {
                     #name::#variant_name(_field) => {
-                        <#bitstart as pack::BitStart>::write_raw(_pack.as_root_mut(), _field);
+                        _pack.as_field_mut::<#bitstart, #ty>().write_raw(_field);
                         #discr_ty::new_unchecked(#idx)
                     }
                 });
                 load_arms.extend(quote! {
-                    #idx => #name::#variant_name(<#bitstart as pack::BitStart>::read_raw(_pack.as_root())),
+                    #idx => #name::#variant_name(_pack.as_field::<#bitstart, #ty>().read_raw()),
                 });
             }
             Fields::Unit => {
@@ -180,7 +180,7 @@ fn enum_data(
     }
 
     let discr_bitstart = discr_bitstart.unwrap_or_else(|| bitstart.clone());
-    *last_bitstart = quote!(pack::NextStart<_PackRoot, #discr_bitstart, #discr_ty>);
+    *last_bitstart = quote!(pack::NextStart<#discr_bitstart, #discr_ty>);
 
     store_impl.extend(quote! {
         let discr = match self {
@@ -203,7 +203,6 @@ fn enum_data(
 pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     // Introduce two additional generics for the impl.
     let mut generics = input.generics.clone();
-    generics.params.push(parse_quote!(_PackRoot: pack::PackableRoot));
     generics.params.push(parse_quote!(_PackStart: pack::BitStart));
 
     let name = &input.ident;
@@ -269,9 +268,8 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     let helper_name = format_ident!("Packed{}", name);
     let helper_ty = quote!(#helper_name #type_generics);
     let target_ty = quote!(#name #base_type_generics);
-    let subpack_ty = quote!(pack::SubPack<_PackRoot, _PackStart, #target_ty>);
+    let subpack_ty = quote!(pack::SubPack<_PackStart, #target_ty>);
     let result = quote! {
-        #[repr(transparent)]
         #vis struct #helper_name #generics #where_clause {
             inner: #subpack_ty,
         }
@@ -307,7 +305,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
         }
 
-        unsafe impl #impl_generics pack::Packable<_PackRoot, _PackStart> for #target_ty #where_clause {
+        unsafe impl #impl_generics pack::Packable<_PackStart> for #target_ty #where_clause {
             type Packed = #helper_ty;
 
             const WIDTH: u32 = {

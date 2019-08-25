@@ -5,16 +5,11 @@ use alloc::boxed::Box;
 use core::mem;
 use core::ops::{Deref, DerefMut};
 
-#[repr(transparent)]
-pub struct PackedBox<R, S, T> {
-    inner: SubPack<R, S, Box<T>>,
+pub struct PackedBox<S, T> {
+    inner: SubPack<S, Box<T>>,
 }
 
-impl<R, S, T> PackedBox<R, S, T>
-where
-    R: PackableRoot,
-    S: BitStart,
-{
+impl<S: BitStart, T> PackedBox<S, T> {
     /// Get the `Box<T>` value as `&T`
     pub fn as_ref(&self) -> &T {
         unsafe { &*(self.inner.get_as_high_bits() as *const T) }
@@ -26,36 +21,32 @@ where
     }
 }
 
-impl<R, S, T> Deref for PackedBox<R, S, T> {
-    type Target = SubPack<R, S, Box<T>>;
+impl<S, T> Deref for PackedBox<S, T> {
+    type Target = SubPack<S, Box<T>>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<R, S, T> DerefMut for PackedBox<R, S, T> {
+impl<S, T> DerefMut for PackedBox<S, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-unsafe impl<R, S, T> Packable<R, S> for Box<T>
-where
-    R: PackableRoot,
-    S: BitStart,
-{
-    type Packed = PackedBox<R, S, T>;
+unsafe impl<S: BitStart, T> Packable<S> for Box<T> {
+    type Packed = PackedBox<S, T>;
 
     const WIDTH: u32 = usize::leading_zeros(mem::align_of::<T>() - 1);
 
     #[inline]
-    unsafe fn store(self, p: &mut SubPack<R, S, Self>) {
+    unsafe fn store(self, p: &mut SubPack<S, Self>) {
         p.set_from_high_bits(Box::into_raw(self) as usize)
     }
 
     #[inline]
-    unsafe fn load(p: &SubPack<R, S, Self>) -> Self {
+    unsafe fn load(p: &SubPack<S, Self>) -> Self {
         Box::from_raw(p.get_as_high_bits() as *mut T)
     }
 }
