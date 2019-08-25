@@ -1,4 +1,4 @@
-use crate::{BitStart, Packable, SubPack, PackableRoot};
+use crate::{BitStart, Packable, SubPack};
 use core::mem;
 
 unsafe impl<S: BitStart> Packable<S> for bool {
@@ -17,8 +17,6 @@ unsafe impl<S: BitStart> Packable<S> for bool {
     }
 }
 
-unsafe impl PackableRoot for bool {}
-
 unsafe impl<'a, T, S: BitStart> Packable<S> for &'a T {
     type Packed = SubPack<S, &'a T>;
 
@@ -34,5 +32,3 @@ unsafe impl<'a, T, S: BitStart> Packable<S> for &'a T {
         &*(p.get_as_high_bits() as *const T)
     }
 }
-
-unsafe impl<'a, T> PackableRoot for &'a T {}

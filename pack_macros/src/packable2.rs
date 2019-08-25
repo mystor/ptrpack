@@ -30,50 +30,45 @@ fn struct_data(
             Some(name) => name.to_string(),
             None => idx.to_string(),
         };
-        let fname_local = format_ident!("_field_{}", fname_s);
-        let fname_get = format_ident!("get_{}", fname_s);
-        let fname_get_mut = format_ident!("get_{}_mut", fname_s);
+        let varname = format_ident!("_field_{}", fname_s);
 
         let bitstart = last_bitstart.clone();
         *last_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
 
-        let ty_as_packable = quote!(#ty as pack::Packable<#bitstart>);
-
-        let as_field_mut = quote!(as_field_mut::<#bitstart, #ty>());
-        let as_field = quote!(as_field::<#bitstart, #ty>());
-
         // Store Impl
         store_impl.extend(quote! {
-            <#ty_as_packable>::store(#fname_local, _pack.#as_field_mut);
+            _pack.as_field_mut::<#bitstart, #ty>().write_raw(#varname);
         });
         dtor_body.extend(
             match &field.ident {
-                Some(name) => quote!(#name: #fname_local,),
-                None => quote!(#fname_local,),
+                Some(name) => quote!(#name: #varname,),
+                None => quote!(#varname,),
             }
         );
 
         // Load Impl
         load_impl.extend(quote! {
-            let #fname_local = <#ty_as_packable>::load(_pack.#as_field);
+            let #varname = _pack.as_field::<#bitstart, #ty>().read_raw();
         });
         ctor_body.extend(
             match &field.ident {
-                Some(name) => quote!(#name: #fname_local,),
-                None => quote!(#fname_local,),
+                Some(name) => quote!(#name: #varname,),
+                None => quote!(#varname,),
             }
         );
 
         // Helper Getter Methods
+        let get_field = format_ident!("get_{}", fname_s);
+        let get_field_mut = format_ident!("set_{}", fname_s);
         helper_impls.extend(quote! {
             // It'd be lovely if I could use associated types here - these decls
             // can end up really long!
-            #vis fn #fname_get(&self) -> &<#ty_as_packable>::Packed {
-                unsafe { (self.#as_field).as_packed() }
+            #vis fn #get_field(&self) -> &<#ty as pack::Packable<#bitstart>>::Packed {
+                unsafe { self.inner.as_field::<#bitstart, #ty>().as_packed() }
             }
 
-            #vis fn #fname_get_mut(&mut self) -> &mut <#ty_as_packable>::Packed {
-                unsafe { (self.#as_field_mut).as_packed_mut() }
+            #vis fn #get_field_mut(&mut self) -> &mut <#ty as pack::Packable<#bitstart>>::Packed {
+                unsafe { self.inner.as_field_mut::<#bitstart, #ty>().as_packed_mut() }
             }
         });
     }
@@ -130,8 +125,6 @@ fn enum_data(
     let mut load_arms = TokenStream::new();
     let mut discr_bitstart: Option<TokenStream> = None;
     for (idx, variant) in data.variants.iter().enumerate() {
-        let variant_name = &variant.ident;
-
         match &variant.fields {
             Fields::Named(_) => {
                 // FIXME: Better errors
@@ -143,21 +136,31 @@ fn enum_data(
                     return Err(Error::new_spanned(variant, "multiple fields in enum variants are unsupported"));
                 }
 
-                let field = &fields.unnamed[0];
-                let ty = &field.ty;
-
                 // Update bitstart value for the discriminant.
+                let ty = &fields.unnamed[0].ty;
                 let after_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
                 discr_bitstart = Some(
                     discr_bitstart
                         .map(|bs| quote!(pack::UnionStart<#bs, #after_bitstart>))
                         .unwrap_or_else(|| after_bitstart.clone())
                 );
+            }
+            Fields::Unit => {}
+        }
+    }
 
-                let ty_as_packable = quote!(#ty as pack::Packable<#bitstart>);
-                let as_field_mut = quote!(as_field_mut::<#bitstart, #ty>());
-                let as_field = quote!(as_field::<#bitstart, #ty>());
+    let discr_bitstart = discr_bitstart.unwrap_or_else(|| bitstart.clone());
+    *last_bitstart = quote!(pack::NextStart<#discr_bitstart, #discr_ty>);
 
+    for (idx, variant) in data.variants.iter().enumerate() {
+        let variant_name = &variant.ident;
+
+        match &variant.fields {
+            Fields::Named(_) => unreachable!(),
+            Fields::Unnamed(fields) => {
+                assert!(fields.unnamed.len() == 1);
+
+                let ty = &fields.unnamed[0].ty;
                 store_arms.extend(quote! {
                     #name::#variant_name(_field) => {
                         _pack.as_field_mut::<#bitstart, #ty>().write_raw(_field);
@@ -178,9 +181,6 @@ fn enum_data(
             }
         }
     }
-
-    let discr_bitstart = discr_bitstart.unwrap_or_else(|| bitstart.clone());
-    *last_bitstart = quote!(pack::NextStart<#discr_bitstart, #discr_ty>);
 
     store_impl.extend(quote! {
         let discr = match self {
@@ -322,12 +322,6 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
                 #load_impl
             }
         }
-
-        // The `PackableRoot` trait impl is needed to avoid recursion when
-        // performing trait resolution. It is used as a trait bound for the
-        // first generic parameter of `Packable`, and implies
-        // `pack::Packable<Self, DefaultStart>`.
-        unsafe impl #base_impl_generics pack::PackableRoot for #target_ty #where_clause { }
     };
     Ok(result)
 }

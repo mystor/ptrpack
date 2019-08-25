@@ -18,8 +18,7 @@ pub mod impls;
 pub const PTR_WIDTH: u32 = usize::leading_zeros(0);
 
 /// Helper method for computing the minimum of two `u32` values.
-#[doc(hidden)]
-pub const fn const_min(a: u32, b: u32) -> u32 {
+const fn const_min(a: u32, b: u32) -> u32 {
     let a_lt_b = (a < b) as u32;
     let a_ge_b = (a >= b) as u32;
 
@@ -27,8 +26,7 @@ pub const fn const_min(a: u32, b: u32) -> u32 {
 }
 
 /// Helper method for computing the mask field constant.
-#[doc(hidden)]
-pub const fn const_mask(before: u32, after: u32) -> usize {
+const fn const_mask(before: u32, after: u32) -> usize {
     // 1 if the specified range is non-empty. This is used to zero out the mask
     // if the range is empty, as `wrapping_shr` and `wrapping_shl` won't produce
     // a 0 value if the shift overflows.
@@ -95,22 +93,15 @@ pub unsafe trait Packable<S: BitStart>: Sized {
     unsafe fn load(p: &SubPack<S, Self>) -> Self;
 }
 
-/// Types which may be packed as the root type within a [`Pack`].
-///
-/// All types implementing [`Packable`] should also implement this trait. This
-/// separate implementation is needed to avoid infinite recursion when
-/// evaluating trait requirements for types stored in a `Pack`.
-pub unsafe trait PackableRoot : Packable<DefaultStart> { }
-
 /// # Pack
 #[repr(transparent)]
-pub struct Pack<R> {
+pub struct Pack<P> {
     value: usize,
-    _marker: PhantomData<R>,
+    _marker: PhantomData<P>,
 }
 
-impl<R: PackableRoot> Pack<R> {
-    pub fn new(x: R) -> Self {
+impl<P: Packable<DefaultStart>> Pack<P> {
+    pub fn new(x: P) -> Self {
         let mut pack = <ManuallyDrop<Self>>::new(Pack {
             value: 0,
             _marker: PhantomData,
@@ -121,14 +112,14 @@ impl<R: PackableRoot> Pack<R> {
         ManuallyDrop::into_inner(pack)
     }
 
-    pub fn into_inner(self) -> R {
+    pub fn into_inner(self) -> P {
         let this = ManuallyDrop::new(self);
-        unsafe { R::load(this.as_inner_pack()) }
+        unsafe { P::load(this.as_inner_pack()) }
     }
 
-    pub fn get(&self) -> R
+    pub fn get(&self) -> P
     where
-        R: Copy,
+        P: Copy,
     {
         self.as_inner_pack().get()
     }
@@ -144,31 +135,31 @@ impl<R: PackableRoot> Pack<R> {
     }
 
     /// Inner helper method to downcast to `SubPack` for utility methods.
-    fn as_inner_pack(&self) -> &SubPack<DefaultStart, R> {
+    fn as_inner_pack(&self) -> &SubPack<DefaultStart, P> {
         unsafe { mem::transmute(self) }
     }
 
     /// Inner helper method to downcast to `SubPack` for utility methods.
-    fn as_inner_pack_mut(&mut self) -> &mut SubPack<DefaultStart, R> {
+    fn as_inner_pack_mut(&mut self) -> &mut SubPack<DefaultStart, P> {
         unsafe { mem::transmute(self) }
     }
 }
 
-impl<R: PackableRoot> Deref for Pack<R> {
-    type Target = R::Packed;
+impl<P: Packable<DefaultStart>> Deref for Pack<P> {
+    type Target = P::Packed;
 
     fn deref(&self) -> &Self::Target {
         unsafe { mem::transmute(self) }
     }
 }
 
-impl<R: PackableRoot> DerefMut for Pack<R> {
+impl<P: Packable<DefaultStart>> DerefMut for Pack<P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { mem::transmute(self) }
     }
 }
 
-impl<R: PackableRoot> fmt::Debug for Pack<R> {
+impl<P: Packable<DefaultStart>> fmt::Debug for Pack<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Pack").field(&self.get_bits()).finish()
     }
@@ -176,6 +167,8 @@ impl<R: PackableRoot> fmt::Debug for Pack<R> {
 
 /// # Inner Pack
 pub struct SubPack<S, P> {
+    // This is a ZST, but always points to the start of a valid `Pack<R>` -
+    // specifically at a `usize`.
     _marker: PhantomData<(S, P)>,
 }
 

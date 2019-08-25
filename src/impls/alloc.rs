@@ -1,6 +1,6 @@
 //! Helper types and impls only used if the `alloc` feature is enabled.
 
-use crate::{BitStart, Packable, SubPack, PackableRoot};
+use crate::{BitStart, Packable, SubPack};
 use alloc::boxed::Box;
 use core::mem;
 use core::ops::{Deref, DerefMut};
@@ -50,5 +50,3 @@ unsafe impl<S: BitStart, T> Packable<S> for Box<T> {
         Box::from_raw(p.get_as_high_bits() as *mut T)
     }
 }
-
-unsafe impl<T> PackableRoot for Box<T> {}

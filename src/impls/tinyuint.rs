@@ -1,5 +1,5 @@
 use core::fmt;
-use crate::{Packable, SubPack, PackableRoot, BitStart};
+use crate::{Packable, SubPack, BitStart};
 
 macro_rules! tiny_decl {
     ($(
@@ -49,8 +49,6 @@ macro_rules! tiny_decl {
                 $Uint(p.get_as_low_bits())
             }
         }
-
-        unsafe impl PackableRoot for $Uint {}
     )*}
 }
 
