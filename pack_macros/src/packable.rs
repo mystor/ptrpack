@@ -1,353 +1,275 @@
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, format_ident, ToTokens};
-use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Generics, Ident, WherePredicate};
-use synstructure::{BindingInfo, Structure, VariantInfo};
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
+use syn::fold::Fold;
+use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Ident, Lifetime};
 
-fn used_bits(val: usize) -> u32 {
-    usize::leading_zeros(0) - usize::leading_zeros(val)
-}
-
-fn nullability(structure: &Structure) -> TokenStream {
-    if let Some(binding_0) = structure.variants()[0].bindings().first() {
-        let ty = &binding_0.ast().ty;
-        quote!(<#ty as pack::Packable>::Nullability)
-    } else {
-        quote!(pack::NullableStorage)
-    }
-}
-
-#[derive(Default)]
-struct Decls {
-    next_id: usize,
-    decls: TokenStream,
-}
-
-impl Decls {
-    fn add(&mut self, name: &str, ty: impl ToTokens, value: impl ToTokens) -> TokenStream {
-        let id = Ident::new(
-            &format!("PACK_{}_{}", name, self.next_id),
-            Span::call_site(),
-        );
-        self.next_id += 1;
-
-        self.decls.extend(quote! {
-            const #id: #ty = #value;
-        });
-        id.into_token_stream()
-    }
-}
-
-struct PackStructure<'a> {
-    variants: Vec<PackVariant<'a>>,
-    discr_width: TokenStream,
-    before_discr: TokenStream,
-    after_discr: TokenStream,
-    discr_mask: TokenStream,
-}
-
-struct PackVariant<'a> {
-    discr: TokenStream,
-    fields: Vec<PackField<'a>>,
-    after_variant: TokenStream,
-    variant: &'a VariantInfo<'a>,
-}
-
-struct PackField<'a> {
-    before: TokenStream,
-    after: TokenStream,
-    mask: TokenStream,
-    binding: &'a BindingInfo<'a>,
-}
-
-fn pack_structure<'a>(structure: &'a Structure<'a>, decls: &mut Decls) -> PackStructure<'a> {
-    let mut variants = Vec::new();
-    for variant in structure.variants() {
-        variants.push(pack_variant(variant, &mut *decls));
-    }
-
-    let mut min_after = quote!(pack::PTR_WIDTH);
-    for variant in &variants {
-        let after_variant = &variant.after_variant;
-        min_after = quote!(pack::const_min(#min_after, #after_variant));
-    }
-
-    let after_variants = decls.add("AFTER_VARIANTS", quote!(u32), min_after);
-
-    let discr_width = decls.add("DISCR_WIDTH", quote!(u32), used_bits(variants.len() - 1));
-
-    let after_discr = decls.add(
-        "AFTER_DISCR",
-        quote!(u32),
-        quote!(#after_variants - #discr_width),
-    );
-    let before_discr = decls.add(
-        "BEFORE_DISCR",
-        quote!(u32),
-        quote!(pack::PTR_WIDTH - #after_discr - #discr_width),
-    );
-    let discr_mask = decls.add(
-        "DISCR_MASK",
-        quote!(usize),
-        quote!(pack::const_mask(#after_discr, #discr_width)),
-    );
-
-    PackStructure {
-        variants,
-        discr_width,
-        after_discr,
-        before_discr,
-        discr_mask,
-    }
-}
-
-fn pack_variant<'a>(variant: &'a VariantInfo<'a>, decls: &mut Decls) -> PackVariant<'a> {
-    let mut after_variant = quote!(pack::PTR_WIDTH);
-    let mut fields = Vec::new();
-    for binding in variant.bindings() {
-        let ty = &binding.ast().ty;
-
-        let width = quote!(<#ty as pack::Packable>::WIDTH);
-
-        let after = decls.add("AFTER", quote!(u32), quote!(#after_variant - #width));
-        let before = decls.add(
-            "BEFORE",
-            quote!(u32),
-            quote!(pack::PTR_WIDTH - #after - #width),
-        );
-        let mask = decls.add(
-            "MASK",
-            quote!(usize),
-            quote!(pack::const_mask(#after, #width)),
-        );
-
-        after_variant = after.clone();
-
-        fields.push(PackField {
-            after,
-            before,
-            mask,
-            binding,
-        });
-    }
-
-    // Discriminant name
-    let name = &variant.ast().ident;
-    let discr = quote!(Pack__Discriminant::#name);
-
-    PackVariant {
-        discr,
-        fields,
-        after_variant,
-        variant,
-    }
-}
-
-fn gen_pack(packed: &PackStructure) -> TokenStream {
-    let mut arms = TokenStream::new();
-    for variant in &packed.variants {
-        let mut body = TokenStream::new();
-
-        // XXX: Is it worthwhile to skip packing the `0` discriminant?
-        let discr = &variant.discr;
-        let before_discr = &packed.before_discr;
-        let after_discr = &packed.after_discr;
-        body.extend(quote! {
-            bits |= pack::Packable::pack(
-                #discr,
-                #before_discr,
-                #after_discr,
-            );
-        });
-
-        // Pack each field, and bit-or them into the final bits
-        for field in &variant.fields {
-            let binding = &field.binding;
-            let before = &field.before;
-            let after = &field.after;
-            body.extend(quote! {
-                bits |= pack::Packable::pack(#binding, #before, #after);
-            })
-        }
-
-        // Build the match arm.
-        let pat = variant.variant.pat();
-        arms.extend(quote! {
-            #pat => {
-                #body
-            }
-        });
-    }
-
-    quote! {
-        let mut bits = 0usize;
-        match self {
-            #arms
-        }
-        bits.wrapping_shr(before)
-    }
-}
-
-fn gen_unpack(packed: &PackStructure) -> TokenStream {
-    // Unpack the discriminant to match on it.
-    let discr_mask = &packed.discr_mask;
-    let before_discr = &packed.before_discr;
-    let after_discr = &packed.after_discr;
-    let discr = quote! {
-        <Pack__Discriminant as pack::Packable>::unpack(
-            shifted & #discr_mask,
-            #before_discr,
-            #after_discr,
-        )
-    };
-
-    let mut arms = TokenStream::new();
-    for variant in &packed.variants {
-        // Build up constructor for each variant.
-        let ctor = variant.variant.construct(|_, idx| {
-            let field = &variant.fields[idx];
-            let mask = &field.mask;
-            let before = &field.before;
-            let after = &field.after;
-            let ty = &field.binding.ast().ty;
-
-            quote! {
-                <#ty as pack::Packable>::unpack(
-                    shifted & #mask,
-                    #before,
-                    #after,
-                )
-            }
-        });
-
-        let variant_discr = &variant.discr;
-        arms.extend(quote! {
-            #variant_discr => #ctor,
-        });
-    }
-
-    quote! {
-        let shifted = packed.wrapping_shl(before);
-        match #discr {
-            #arms
-        }
-    }
-}
-
-fn gen_discriminant(packed: &PackStructure) -> TokenStream {
-    let mut discriminants = TokenStream::new();
-    for (idx, variant) in packed.variants.iter().enumerate() {
-        let name = &variant.variant.ast().ident;
-        discriminants.extend(quote!(#name = #idx,));
-    }
-
-    let discr_width = &packed.discr_width;
-    quote! {
-        #[repr(usize)]
-        pub enum Pack__Discriminant {
-            #discriminants
-        }
-
-        unsafe impl pack::Packable for Pack__Discriminant {
-            const WIDTH: u32 = #discr_width;
-            type Storage = pack::NullableStorage;
-            type Discriminant = Pack__Discriminant;
-
-            #[inline]
-            fn pack(&self, _before: u32, after: u32) -> usize {
-                (self as usize).wrapping_shl(after)
-            }
-
-            #[inline]
-            unsafe fn unpack(packed: usize, _before: u32, after: u32) -> usize {
-                ::core::mem::transmute::<usize, Self>(packed.wrapping_shr(after))
-            }
-        }
-    }
-}
-
-fn add_pred(generics: &mut Generics, pred: WherePredicate) {
-    generics.make_where_clause().predicates.push(pred);
-}
+/// The width of a pointer on the platform which is running this proc-macro.
+const HOST_PTR_WIDTH: u32 = 0usize.leading_zeros();
 
 fn struct_data(
+    name: &Ident,
     data: &DataStruct,
     helper_impls: &mut TokenStream,
     store_impl: &mut TokenStream,
     load_impl: &mut TokenStream,
     last_bitstart: &mut TokenStream,
-) {
-    panic!();
+) -> Result<(), Error> {
+    let mut dtor_body = TokenStream::new();
+    let mut ctor_body = TokenStream::new();
+    for (idx, field) in data.fields.iter().enumerate() {
+        let ty = &field.ty;
+        let vis = &field.vis;
+
+        let fname_s = match &field.ident {
+            Some(name) => name.to_string(),
+            None => idx.to_string(),
+        };
+        let varname = format_ident!("_field_{}", fname_s);
+
+        let bitstart = last_bitstart.clone();
+        *last_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
+
+        // Store Impl
+        store_impl.extend(quote! {
+            _pack.as_field_mut::<#bitstart, #ty>().write_raw(#varname);
+        });
+        dtor_body.extend(match &field.ident {
+            Some(name) => quote!(#name: #varname,),
+            None => quote!(#varname,),
+        });
+
+        // Load Impl
+        load_impl.extend(quote! {
+            let #varname = _pack.as_field::<#bitstart, #ty>().read_raw();
+        });
+        ctor_body.extend(match &field.ident {
+            Some(name) => quote!(#name: #varname,),
+            None => quote!(#varname,),
+        });
+
+        // Helper Getter Methods
+        let get_field = format_ident!("get_{}", fname_s);
+        let get_field_mut = format_ident!("set_{}", fname_s);
+        helper_impls.extend(quote! {
+            // It'd be lovely if I could use associated types here - these decls
+            // can end up really long!
+            #vis fn #get_field(&self) -> &<#ty as pack::Packable<#bitstart>>::Packed {
+                unsafe { self.inner.as_field::<#bitstart, #ty>().as_packed() }
+            }
+
+            #vis fn #get_field_mut(&mut self) -> &mut <#ty as pack::Packable<#bitstart>>::Packed {
+                unsafe { self.inner.as_field_mut::<#bitstart, #ty>().as_packed_mut() }
+            }
+        });
+    }
+
+    let destruct = match &data.fields {
+        Fields::Named(_) => quote!(#name { #dtor_body }),
+        Fields::Unnamed(_) => quote!(#name(#dtor_body)),
+        Fields::Unit => quote!(#name),
+    };
+    *store_impl = quote! {
+        let #destruct = self;
+        #store_impl
+    };
+
+    // Load Impl Ctor
+    load_impl.extend(match &data.fields {
+        Fields::Named(_) => quote!(#name { #ctor_body }),
+        Fields::Unnamed(_) => quote!(#name(#ctor_body)),
+        Fields::Unit => quote!(#name),
+    });
+
+    Ok(())
 }
 
 fn enum_data(
+    name: &Ident,
     data: &DataEnum,
     helper_impls: &mut TokenStream,
     store_impl: &mut TokenStream,
     load_impl: &mut TokenStream,
     last_bitstart: &mut TokenStream,
-) {
-    panic!();
+) -> Result<(), Error> {
+    // FIXME: Should there be a behaviour for packing values with non-trivial
+    // enum variants (either unit or single-element tuple variants?).
+    //
+    // Doing so is certainly possible, but the API might not be super great.
+
+    // FIXME: Extra code can probably be generated for the `Option<T>`-style
+    // case to support the nonzero pointer optimization. Perhaps detect the
+    // value looks like `Option<T>`, and forward to it under the hood?
+
+    // How many bits are required for the discriminant.
+    let discr_bits = HOST_PTR_WIDTH - (data.variants.len() - 1).leading_zeros();
+    if discr_bits > 32 {
+        return Err(Error::new_spanned(
+            data.enum_token,
+            "Too many variants! At most 2^32 - 1 variants are supported",
+        ));
+    }
+    let discr_ty_id = format_ident!("U{}", discr_bits);
+    let discr_ty = quote!(pack::impls::#discr_ty_id);
+
+    let bitstart = last_bitstart.clone();
+    let mut store_arms = TokenStream::new();
+    let mut load_arms = TokenStream::new();
+    let mut discr_bitstart: Option<TokenStream> = None;
+    for variant in &data.variants {
+        match &variant.fields {
+            Fields::Named(_) => {
+                // FIXME: Better errors
+                return Err(Error::new_spanned(
+                    variant,
+                    "struct-style enum variants unsupported",
+                ));
+            }
+            Fields::Unnamed(fields) => {
+                if fields.unnamed.len() != 1 {
+                    // FIXME: Better errors
+                    return Err(Error::new_spanned(
+                        variant,
+                        "multiple fields in enum variants are unsupported",
+                    ));
+                }
+
+                // Update bitstart value for the discriminant.
+                let ty = &fields.unnamed[0].ty;
+                let after_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
+                discr_bitstart = Some(
+                    discr_bitstart
+                        .map(|bs| quote!(pack::UnionStart<#bs, #after_bitstart>))
+                        .unwrap_or_else(|| after_bitstart.clone()),
+                );
+            }
+            Fields::Unit => {}
+        }
+    }
+
+    let discr_bitstart = discr_bitstart.unwrap_or_else(|| bitstart.clone());
+    *last_bitstart = quote!(pack::NextStart<#discr_bitstart, #discr_ty>);
+
+    for (idx, variant) in data.variants.iter().enumerate() {
+        let variant_name = &variant.ident;
+
+        match &variant.fields {
+            Fields::Named(_) => unreachable!(),
+            Fields::Unnamed(fields) => {
+                assert!(fields.unnamed.len() == 1);
+
+                let ty = &fields.unnamed[0].ty;
+                store_arms.extend(quote! {
+                    #name::#variant_name(_field) => {
+                        _pack.as_field_mut::<#bitstart, #ty>().write_raw(_field);
+                        #discr_ty::new_unchecked(#idx)
+                    }
+                });
+                load_arms.extend(quote! {
+                    #idx => #name::#variant_name(_pack.as_field::<#bitstart, #ty>().read_raw()),
+                });
+            }
+            Fields::Unit => {
+                store_arms.extend(quote! {
+                    #name::#variant_name => #idx,
+                });
+                load_arms.extend(quote! {
+                    #idx => #name::#variant_name,
+                });
+            }
+        }
+    }
+
+    store_impl.extend(quote! {
+        let discr = match self {
+            #store_arms
+        };
+        _pack.as_field_mut::<#discr_bitstart, #discr_ty>().write_raw(discr);
+    });
+
+    load_impl.extend(quote! {
+        let discr = _pack.as_field::<#discr_bitstart, #discr_ty>().read_raw();
+        match discr.get() {
+            #load_arms
+            _ => ::core::hint::unreachable_unchecked(),
+        }
+    });
+
+    Ok(())
 }
 
-pub fn do_derive_packable(input: &DeriveInput) -> TokenStream {
+pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     // Introduce two additional generics for the impl.
     let mut generics = input.generics.clone();
-    generics.params.push(parse_quote!(_PackRoot));
-    generics.params.push(parse_quote!(_PackStart));
+    generics
+        .params
+        .push(parse_quote!(_PackStart: pack::BitStart));
 
-    add_pred(
-        &mut generics,
-        parse_quote! {
-            _PackRoot: pack::Packable<_PackRoot, pack::DefaultStart>
-        },
-    );
-    add_pred(
-        &mut generics,
-        parse_quote! {
-            _PackStart: pack::BitStart
-        },
-    );
+    let name = &input.ident;
+    let vis = &input.vis;
 
     let mut helper_impls = TokenStream::new();
     let mut store_impl = TokenStream::new();
     let mut load_impl = TokenStream::new();
-    let mut last_bitstart = TokenStream::new();
+    let mut last_bitstart = quote!(_PackStart);
 
     match &input.data {
         Data::Struct(data) => {
             struct_data(
+                name,
                 data,
                 &mut helper_impls,
                 &mut store_impl,
                 &mut load_impl,
                 &mut last_bitstart,
-            );
+            )?;
         }
         Data::Enum(data) => {
             enum_data(
+                name,
                 data,
                 &mut helper_impls,
                 &mut store_impl,
                 &mut load_impl,
                 &mut last_bitstart,
-            );
+            )?;
         }
         Data::Union(_) => {
-            panic!("FIXME FIXME: Unsupported");
+            return Err(Error::new_spanned(input, "union types are unsupported"));
         }
     }
 
+    // Unfortunately, using the full types for members such as `&'a T` when
+    // computing the `WIDTH` constant produces a compiler error, where the
+    // compiler complains it cannot ensure `T` outlives `&'a`. This constraint
+    // should be enforced already, as the type exists as a field in the struct
+    // we're implementing, but the compiler appears to be unaware.
+    //
+    // This `fold` pass patches up the `last_bitstart` value to use inferred
+    // lifetimes, which dodges this well-formedness issue.
+    //
+    // FIXME: This probably barfs on `for<'a> ...`-style expressions, and
+    // perhaps that should be fixed?
+    struct InferLifetimes;
+    impl Fold for InferLifetimes {
+        fn fold_lifetime(&mut self, l: Lifetime) -> Lifetime {
+            if &l.ident == "static" {
+                return l;
+            }
+            Lifetime::new("'_", l.apostrophe)
+        }
+    }
+    let last_bitstart = InferLifetimes.fold_type(parse_quote!(#last_bitstart));
+
     // Get the generics required for the impl.
-    let name = &input.ident;
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
     let (_, base_type_generics, _) = input.generics.split_for_impl();
 
     let helper_name = format_ident!("Packed{}", name);
     let helper_ty = quote!(#helper_name #type_generics);
     let target_ty = quote!(#name #base_type_generics);
-    let subpack_ty = quote!(pack::SubPack<_PackRoot, _PackStart, #target_ty>);
-    quote! {
-        struct #helper_name #generics #where_clause {
+    let subpack_ty = quote!(pack::SubPack<_PackStart, #target_ty>);
+    let result = quote! {
+        #vis struct #helper_name #generics #where_clause {
             inner: #subpack_ty,
         }
 
@@ -355,6 +277,13 @@ pub fn do_derive_packable(input: &DeriveInput) -> TokenStream {
             #helper_impls
         }
 
+        // XXX: It's pretty gross that we're using `Deref` for a kind-of
+        // "inheritance" here. I'd love to do something better, but it doesn't
+        // look to be possible without losing `Copy`-only methods, due to rustc
+        // erroring when seeing trivial `where` clauses.
+        //
+        // It may be possible to hide the fact these bounds are trivial from
+        // rustc?
         impl #impl_generics ::core::ops::Deref for #helper_ty #where_clause {
             type Target = #subpack_ty;
 
@@ -370,61 +299,28 @@ pub fn do_derive_packable(input: &DeriveInput) -> TokenStream {
         }
 
         impl #impl_generics ::core::fmt::Debug for #helper_ty #where_clause {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 self.inner.fmt(f)
             }
         }
 
-        unsafe impl #impl_generics pack::Packable<_PackRoot, _PackStart> for #target_ty #where_clause
-        {
+        unsafe impl #impl_generics pack::Packable<_PackStart> for #target_ty #where_clause {
             type Packed = #helper_ty;
 
-            const WIDTH: u32 = pack::PTR_WIDTH - <#last_bitstart as pack::BitStart>::START;
+            const WIDTH: u32 = {
+                let old_start = _PackStart::START;
+                let new_start = <#last_bitstart as pack::BitStart>::START;
+                old_start - new_start
+            };
 
-            unsafe fn store(self, p: &mut #subpack_ty) {
+            unsafe fn store(self, _pack: &mut #subpack_ty) {
                 #store_impl
             }
 
-            unsafe fn load(p: &#subpack_ty) -> Self {
+            unsafe fn load(_pack: &#subpack_ty) -> Self {
                 #load_impl
             }
         }
-    }
-}
-
-pub fn derive_packable(structure: Structure) -> TokenStream {
-    let mut decls = Decls::default();
-    let packed = pack_structure(&structure, &mut decls);
-
-    let discriminant = gen_discriminant(&packed);
-
-    let impl_pack = gen_pack(&packed);
-    let impl_unpack = gen_unpack(&packed);
-
-    let decls_tokens = &decls.decls;
-    let after_discr = &packed.after_discr;
-    let storage = nullability(&structure);
-    structure.gen_impl(quote! {
-        extern crate pack;
-
-        #discriminant
-
-        #decls_tokens
-
-        gen unsafe impl pack::Packable for @Self {
-            const WIDTH: u32 = pack::PTR_WIDTH - #after_discr;
-            type Storage = #storage;
-            type Discriminant = Pack__Discriminant;
-
-            #[inline]
-            fn pack(&self, before: u32, _after: u32) -> usize {
-                #impl_pack
-            }
-
-            #[inline]
-            unsafe fn unpack(packed: usize, before: u32, _after: u32) -> Self {
-                #impl_unpack
-            }
-        }
-    })
+    };
+    Ok(result)
 }
