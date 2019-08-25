@@ -1,7 +1,10 @@
-use syn::{parse_quote, Generics, WherePredicate, Data, DataStruct, DataEnum, DeriveInput, Ident, Fields, Error, Type, Lifetime};
-use syn::fold::Fold;
-use quote::{quote, format_ident};
 use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
+use syn::fold::Fold;
+use syn::{
+    parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Generics, Ident, Lifetime,
+    Type, WherePredicate,
+};
 
 /// The width of a pointer on the platform which is running this proc-macro.
 const HOST_PTR_WIDTH: u32 = 0usize.leading_zeros();
@@ -26,7 +29,7 @@ fn struct_data(
         let ty = &field.ty;
         let vis = &field.vis;
 
-        let fname_s = match &field.ident{
+        let fname_s = match &field.ident {
             Some(name) => name.to_string(),
             None => idx.to_string(),
         };
@@ -39,23 +42,19 @@ fn struct_data(
         store_impl.extend(quote! {
             _pack.as_field_mut::<#bitstart, #ty>().write_raw(#varname);
         });
-        dtor_body.extend(
-            match &field.ident {
-                Some(name) => quote!(#name: #varname,),
-                None => quote!(#varname,),
-            }
-        );
+        dtor_body.extend(match &field.ident {
+            Some(name) => quote!(#name: #varname,),
+            None => quote!(#varname,),
+        });
 
         // Load Impl
         load_impl.extend(quote! {
             let #varname = _pack.as_field::<#bitstart, #ty>().read_raw();
         });
-        ctor_body.extend(
-            match &field.ident {
-                Some(name) => quote!(#name: #varname,),
-                None => quote!(#varname,),
-            }
-        );
+        ctor_body.extend(match &field.ident {
+            Some(name) => quote!(#name: #varname,),
+            None => quote!(#varname,),
+        });
 
         // Helper Getter Methods
         let get_field = format_ident!("get_{}", fname_s);
@@ -84,13 +83,11 @@ fn struct_data(
     };
 
     // Load Impl Ctor
-    load_impl.extend(
-        match &data.fields {
-            Fields::Named(_) => quote!(#name { #ctor_body }),
-            Fields::Unnamed(_) => quote!(#name(#ctor_body)),
-            Fields::Unit => quote!(#name),
-        }
-    );
+    load_impl.extend(match &data.fields {
+        Fields::Named(_) => quote!(#name { #ctor_body }),
+        Fields::Unnamed(_) => quote!(#name(#ctor_body)),
+        Fields::Unit => quote!(#name),
+    });
 
     Ok(())
 }
@@ -115,7 +112,10 @@ fn enum_data(
     // How many bits are required for the discriminant.
     let discr_bits = HOST_PTR_WIDTH - (data.variants.len() - 1).leading_zeros();
     if discr_bits > 32 {
-        return Err(Error::new_spanned(data.enum_token, "Too many variants! At most 2^32 - 1 variants are supported"));
+        return Err(Error::new_spanned(
+            data.enum_token,
+            "Too many variants! At most 2^32 - 1 variants are supported",
+        ));
     }
     let discr_ty_id = format_ident!("U{}", discr_bits);
     let discr_ty = quote!(pack::impls::#discr_ty_id);
@@ -128,12 +128,18 @@ fn enum_data(
         match &variant.fields {
             Fields::Named(_) => {
                 // FIXME: Better errors
-                return Err(Error::new_spanned(variant, "struct-style enum variants unsupported"));
+                return Err(Error::new_spanned(
+                    variant,
+                    "struct-style enum variants unsupported",
+                ));
             }
             Fields::Unnamed(fields) => {
                 if fields.unnamed.len() != 1 {
                     // FIXME: Better errors
-                    return Err(Error::new_spanned(variant, "multiple fields in enum variants are unsupported"));
+                    return Err(Error::new_spanned(
+                        variant,
+                        "multiple fields in enum variants are unsupported",
+                    ));
                 }
 
                 // Update bitstart value for the discriminant.
@@ -142,7 +148,7 @@ fn enum_data(
                 discr_bitstart = Some(
                     discr_bitstart
                         .map(|bs| quote!(pack::UnionStart<#bs, #after_bitstart>))
-                        .unwrap_or_else(|| after_bitstart.clone())
+                        .unwrap_or_else(|| after_bitstart.clone()),
                 );
             }
             Fields::Unit => {}
@@ -203,7 +209,9 @@ fn enum_data(
 pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     // Introduce two additional generics for the impl.
     let mut generics = input.generics.clone();
-    generics.params.push(parse_quote!(_PackStart: pack::BitStart));
+    generics
+        .params
+        .push(parse_quote!(_PackStart: pack::BitStart));
 
     let name = &input.ident;
     let vis = &input.vis;

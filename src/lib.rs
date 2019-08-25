@@ -1,15 +1,14 @@
-#![recursion_limit="128"]
-
+#![recursion_limit = "128"]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+use core::cmp;
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
-use core::cmp;
 
 pub mod impls;
 

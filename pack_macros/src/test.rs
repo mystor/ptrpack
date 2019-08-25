@@ -1,8 +1,8 @@
 use crate::packable2::do_derive_packable;
-use syn::{DeriveInput, parse_quote};
+use syn::{parse_quote, DeriveInput};
 
-use std::process::{Command, Stdio};
 use std::io::Write;
+use std::process::{Command, Stdio};
 
 #[test]
 fn my_test() {
@@ -22,13 +22,16 @@ fn my_test() {
         .stdin(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.unwrap().write(multiline_output.as_bytes()).unwrap();
+    child
+        .stdin
+        .unwrap()
+        .write(multiline_output.as_bytes())
+        .unwrap();
     child.stdin = None;
     child.wait().unwrap();
 
     panic!();
 }
-
 
 // use crate::packable::derive_packable;
 // use synstructure::test_derive;

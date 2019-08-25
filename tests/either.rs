@@ -14,7 +14,7 @@ fn test_something() {
     let apple = &15u32;
     let pear = true;
 
-    let something = Something {apple, pear};
+    let something = Something { apple, pear };
     let packed = Pack::new(something);
 
     let apple_ = packed.get_apple();

@@ -16,15 +16,19 @@ pub fn derive_packable(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
     };
 
     if true {
-        use std::process::{Command, Stdio};
         use std::io::Write;
+        use std::process::{Command, Stdio};
 
         let multiline_output = stream.to_string().replace("{ ", "{\n");
         let mut child = Command::new("rustfmt")
             .stdin(Stdio::piped())
             .spawn()
             .unwrap();
-        child.stdin.unwrap().write(multiline_output.as_bytes()).unwrap();
+        child
+            .stdin
+            .unwrap()
+            .write(multiline_output.as_bytes())
+            .unwrap();
         child.stdin = None;
         child.wait().unwrap();
     }
