@@ -9,11 +9,10 @@ use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 
-pub mod impls;
+use bitstart::{BitStart, DefaultStart};
 
+pub mod impls;
 pub mod bitstart;
-// XXX(nika): This should be fixed eventually.
-pub use bitstart::*;
 
 /// Helper constant value of the width of a pointer in bits.
 const PTR_WIDTH: u32 = usize::leading_zeros(0);

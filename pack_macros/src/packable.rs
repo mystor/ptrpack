@@ -32,7 +32,7 @@ fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
         let varname = format_ident!("_field_{}", fname_s, span = field.span());
 
         let bitstart = next_bitstart.clone();
-        next_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
+        next_bitstart = quote!(pack::bitstart::NextStart<#bitstart, #ty>);
 
         // Store Impl
         store_impl.extend(quote! {
@@ -138,9 +138,9 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
 
                 // Update bitstart value for the discriminant.
                 let ty = &fields.unnamed[0].ty;
-                let after_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
+                let after_bitstart = quote!(pack::bitstart::NextStart<#bitstart, #ty>);
                 discr_bitstart = discr_bitstart
-                    .map(|bs| quote!(pack::UnionStart<#bs, #after_bitstart>))
+                    .map(|bs| quote!(pack::bitstart::UnionStart<#bs, #after_bitstart>))
                     .or_else(|| Some(after_bitstart.clone()));
             }
             Fields::Unit => {}
@@ -148,7 +148,7 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
     }
 
     let discr_bitstart = discr_bitstart.unwrap_or_else(|| bitstart.clone());
-    let next_bitstart = quote!(pack::NextStart<#discr_bitstart, #discr_ty>);
+    let next_bitstart = quote!(pack::bitstart::NextStart<#discr_bitstart, #discr_ty>);
 
     for (idx, variant) in data.variants.iter().enumerate() {
         let variant_name = &variant.ident;
@@ -208,7 +208,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     let mut generics = input.generics.clone();
     generics
         .params
-        .push(parse_quote!(_PackStart: pack::BitStart));
+        .push(parse_quote!(_PackStart: pack::bitstart::BitStart));
 
     let name = &input.ident;
     let vis = &input.vis;
@@ -297,7 +297,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
 
             const WIDTH: u32 = {
                 let old_start = _PackStart::START;
-                let new_start = <#next_bitstart as pack::BitStart>::START;
+                let new_start = <#next_bitstart as pack::bitstart::BitStart>::START;
                 old_start - new_start
             };
 

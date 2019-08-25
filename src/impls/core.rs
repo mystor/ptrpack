@@ -1,4 +1,5 @@
-use crate::{BitStart, Packable, SubPack, RawPackedBits};
+use crate::{Packable, SubPack, RawPackedBits};
+use crate::bitstart::BitStart;
 use core::mem;
 
 unsafe impl<S: BitStart> Packable<S> for bool {
