@@ -49,6 +49,24 @@ pub const fn const_mask(before: u32, after: u32) -> usize {
 /// # BitStart
 pub trait BitStart {
     const START: u32;
+
+    unsafe fn read_raw<R, P>(root: &Pack<R>) -> P
+    where
+        R: PackableRoot,
+        P: Packable<R, Self>,
+        Self: Sized,
+    {
+        P::load(mem::transmute::<&Pack<R>, &SubPack<R, Self, P>>(root))
+    }
+
+    unsafe fn write_raw<R, P>(root: &mut Pack<R>, val: P)
+    where
+        R: PackableRoot,
+        P: Packable<R, Self>,
+        Self: Sized,
+    {
+        P::store(val, mem::transmute::<&mut Pack<R>, &mut SubPack<R, Self, P>>(root))
+    }
 }
 
 /// The default initial bit offset for a packed value.
@@ -63,7 +81,7 @@ pub struct NextStart<R, S, P> {
 }
 impl<R, S, P> BitStart for NextStart<R, S, P>
 where
-    R: Packable<R, DefaultStart>,
+    R: PackableRoot,
     S: BitStart,
     P: Packable<R, S>,
 {
@@ -82,7 +100,7 @@ where
 }
 
 /// # Packable
-pub unsafe trait Packable<R: Packable<R, DefaultStart>, S: BitStart>: Sized {
+pub unsafe trait Packable<R: PackableRoot, S: BitStart>: Sized {
     /// Must be a newtype around `Pack<R>` to provide inherent accessors for
     /// specific data members.
     type Packed;
@@ -97,6 +115,13 @@ pub unsafe trait Packable<R: Packable<R, DefaultStart>, S: BitStart>: Sized {
     unsafe fn load(p: &SubPack<R, S, Self>) -> Self;
 }
 
+/// Types which may be packed as the root type within a [`Pack`].
+///
+/// All types implementing [`Packable`] should also implement this trait. This
+/// separate implementation is needed to avoid infinite recursion when
+/// evaluating trait requirements for types stored in a `Pack`.
+pub unsafe trait PackableRoot : Packable<Self, DefaultStart> { }
+
 /// # Pack
 #[repr(transparent)]
 pub struct Pack<R> {
@@ -104,10 +129,7 @@ pub struct Pack<R> {
     _marker: PhantomData<R>,
 }
 
-impl<R> Pack<R>
-where
-    R: Packable<R, DefaultStart>,
-{
+impl<R: PackableRoot> Pack<R> {
     pub fn new(x: R) -> Self {
         let mut pack = <ManuallyDrop<Self>>::new(Pack {
             value: 0,
@@ -152,10 +174,7 @@ where
     }
 }
 
-impl<R> Deref for Pack<R>
-where
-    R: Packable<R, DefaultStart>,
-{
+impl<R: PackableRoot> Deref for Pack<R> {
     type Target = R::Packed;
 
     fn deref(&self) -> &Self::Target {
@@ -163,25 +182,21 @@ where
     }
 }
 
-impl<R> DerefMut for Pack<R>
-where
-    R: Packable<R, DefaultStart>,
-{
+impl<R: PackableRoot> DerefMut for Pack<R> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { mem::transmute(self) }
     }
 }
 
-impl<R> fmt::Debug for Pack<R>
-where
-    R: Packable<R, DefaultStart>,
-{
+impl<R: PackableRoot> fmt::Debug for Pack<R> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Pack").field(&self.get_bits()).finish()
     }
 }
 
 // XXX(nika): Consider adding more comparison operators?
+#[doc(hidden)]
+pub type PackedType<R: PackableRoot, S: BitStart, P: Packable<R, S>> = P::Packed;
 
 /// # Inner Pack
 #[repr(transparent)]
@@ -192,7 +207,7 @@ pub struct SubPack<R, S, P> {
 
 impl<R, S, P> SubPack<R, S, P>
 where
-    R: Packable<R, DefaultStart>,
+    R: PackableRoot,
     S: BitStart,
     P: Packable<R, S>,
 {
@@ -206,15 +221,33 @@ where
     where
         P: Copy,
     {
-        unsafe { P::load(self) }
+        unsafe { self.read_raw() }
     }
 
     pub fn replace(&mut self, new: P) -> P {
         unsafe {
-            let prev = ManuallyDrop::new(P::load(self));
-            new.store(self);
+            let prev = ManuallyDrop::new(self.read_raw());
+            self.write_raw(new);
             ManuallyDrop::into_inner(prev)
         }
+    }
+
+    pub unsafe fn read_raw(&self) -> P {
+        P::load(self)
+    }
+
+    pub unsafe fn write_raw(&mut self, new: P) {
+        P::store(new, self)
+    }
+
+    #[doc(hidden)]
+    pub fn as_root(&self) -> &Pack<R> {
+        &self.inner
+    }
+
+    #[doc(hidden)]
+    pub fn as_root_mut(&mut self) -> &mut Pack<R> {
+        &mut self.inner
     }
 
     /// Masked read of the relevant bits from the underlying type.
@@ -254,7 +287,7 @@ where
     /// Cast the reference down to a field.
     ///
     /// This method is not intended for use outside of impls.
-    pub unsafe fn as_field<S2, T>(&self) -> &T::Packed
+    pub unsafe fn as_field<S2, T>(&self) -> &SubPack<R, S2, T>
     where
         S2: BitStart,
         T: Packable<R, S2>,
@@ -265,18 +298,26 @@ where
     /// Cast the reference down to a field.
     ///
     /// This method is not intended for use outside of impls.
-    pub unsafe fn as_field_mut<S2, T>(&mut self) -> &mut T::Packed
+    pub unsafe fn as_field_mut<S2, T>(&mut self) -> &mut SubPack<R, S2, T>
     where
         S2: BitStart,
         T: Packable<R, S2>,
     {
         mem::transmute(self)
     }
+
+    pub fn as_packed(&self) -> &P::Packed {
+        unsafe { mem::transmute(self) }
+    }
+
+    pub fn as_packed_mut(&mut self) -> &mut P::Packed {
+        unsafe { mem::transmute(self) }
+    }
 }
 
 impl<R, S, P> fmt::Debug for SubPack<R, S, P>
 where
-    R: Packable<R, DefaultStart>,
+    R: PackableRoot,
     S: BitStart,
     P: Packable<R, S>,
 {

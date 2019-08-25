@@ -1,6 +1,6 @@
 //! Helper types and impls only used if the `alloc` feature is enabled.
 
-use crate::{BitStart, DefaultStart, Packable, SubPack};
+use crate::{BitStart, Packable, SubPack, PackableRoot};
 use alloc::boxed::Box;
 use core::mem;
 use core::ops::{Deref, DerefMut};
@@ -12,7 +12,7 @@ pub struct PackedBox<R, S, T> {
 
 impl<R, S, T> PackedBox<R, S, T>
 where
-    R: Packable<R, DefaultStart>,
+    R: PackableRoot,
     S: BitStart,
 {
     /// Get the `Box<T>` value as `&T`
@@ -42,12 +42,12 @@ impl<R, S, T> DerefMut for PackedBox<R, S, T> {
 
 unsafe impl<R, S, T> Packable<R, S> for Box<T>
 where
-    R: Packable<R, DefaultStart>,
+    R: PackableRoot,
     S: BitStart,
 {
     type Packed = PackedBox<R, S, T>;
 
-    const WIDTH: u32 = usize::leading_zeros(mem::align_of::<T>());
+    const WIDTH: u32 = usize::leading_zeros(mem::align_of::<T>() - 1);
 
     #[inline]
     unsafe fn store(self, p: &mut SubPack<R, S, Self>) {
@@ -59,3 +59,5 @@ where
         Box::from_raw(p.get_as_high_bits() as *mut T)
     }
 }
+
+unsafe impl<T> PackableRoot for Box<T> {}
