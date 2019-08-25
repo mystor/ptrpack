@@ -1,6 +1,6 @@
 //! Helper types and impls only used if the `alloc` feature is enabled.
 
-use crate::{BitStart, Packable, SubPack};
+use crate::{BitStart, Packable, SubPack, RawPackedBits};
 use alloc::boxed::Box;
 use core::mem;
 use core::ops::{Deref, DerefMut};
@@ -10,6 +10,7 @@ pub struct PackedBox<S, T> {
 }
 
 impl<S: BitStart, T> PackedBox<S, T> {
+    /*
     /// Get the `Box<T>` value as `&T`
     pub fn as_ref(&self) -> &T {
         unsafe { &*(self.inner.get_as_high_bits() as *const T) }
@@ -19,6 +20,7 @@ impl<S: BitStart, T> PackedBox<S, T> {
     pub fn as_mut(&mut self) -> &mut T {
         unsafe { &mut *(self.inner.get_as_high_bits() as *mut T) }
     }
+    */
 }
 
 impl<S, T> Deref for PackedBox<S, T> {
@@ -41,12 +43,12 @@ unsafe impl<S: BitStart, T> Packable<S> for Box<T> {
     const WIDTH: u32 = usize::leading_zeros(mem::align_of::<T>() - 1);
 
     #[inline]
-    unsafe fn store(self, p: &mut SubPack<S, Self>) {
-        p.set_from_high_bits(Box::into_raw(self) as usize)
+    unsafe fn store(self, p: &mut RawPackedBits<S, Self>) {
+        p.write_high_bits(Box::into_raw(self) as usize)
     }
 
     #[inline]
-    unsafe fn load(p: &SubPack<S, Self>) -> Self {
-        Box::from_raw(p.get_as_high_bits() as *mut T)
+    unsafe fn load(p: &RawPackedBits<S, Self>) -> Self {
+        Box::from_raw(p.read_high_bits() as *mut T)
     }
 }

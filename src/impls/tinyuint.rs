@@ -1,4 +1,4 @@
-use crate::{BitStart, Packable, SubPack};
+use crate::{BitStart, Packable, SubPack, RawPackedBits};
 use core::fmt;
 
 macro_rules! tiny_decl {
@@ -40,13 +40,13 @@ macro_rules! tiny_decl {
             const WIDTH: u32 = $width;
 
             #[inline]
-            unsafe fn store(self, p: &mut SubPack<S, Self>) {
-                p.set_from_low_bits(self.0);
+            unsafe fn store(self, p: &mut RawPackedBits<S, Self>) {
+                p.write_low_bits(self.0);
             }
 
             #[inline]
-            unsafe fn load(p: &SubPack<S, Self>) -> Self {
-                $Uint(p.get_as_low_bits())
+            unsafe fn load(p: &RawPackedBits<S, Self>) -> Self {
+                $Uint(p.read_low_bits())
             }
         }
     )*}

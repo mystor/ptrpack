@@ -36,7 +36,7 @@ fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
 
         // Store Impl
         store_impl.extend(quote! {
-            _pack.as_field_mut::<#bitstart, #ty>().write_raw(#varname);
+            _pack.write_field::<#bitstart, #ty>(#varname);
         });
         dtor_body.extend(match &field.ident {
             Some(name) => quote!(#name: #varname,),
@@ -45,7 +45,7 @@ fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
 
         // Load Impl
         load_impl.extend(quote! {
-            let #varname = _pack.as_field::<#bitstart, #ty>().read_raw();
+            let #varname = _pack.read_field::<#bitstart, #ty>();
         });
         ctor_body.extend(match &field.ident {
             Some(name) => quote!(#name: #varname,),
@@ -161,12 +161,12 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
                 let ty = &fields.unnamed[0].ty;
                 store_arms.extend(quote! {
                     #name::#variant_name(_field) => {
-                        _pack.as_field_mut::<#bitstart, #ty>().write_raw(_field);
+                        _pack.write_field::<#bitstart, #ty>(_field);
                         #discr_ty::new_unchecked(#idx)
                     }
                 });
                 load_arms.extend(quote! {
-                    #idx => #name::#variant_name(_pack.as_field::<#bitstart, #ty>().read_raw()),
+                    #idx => #name::#variant_name(_pack.read_field::<#bitstart, #ty>()),
                 });
             }
             Fields::Unit => {
@@ -184,11 +184,11 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
         let discr = match self {
             #store_arms
         };
-        _pack.as_field_mut::<#discr_bitstart, #discr_ty>().write_raw(discr);
+        _pack.write_field::<#discr_bitstart, #discr_ty>(discr);
     };
 
     let load_impl = quote! {
-        let discr = _pack.as_field::<#discr_bitstart, #discr_ty>().read_raw();
+        let discr = _pack.read_field::<#discr_bitstart, #discr_ty>();
         match discr.get() {
             #load_arms
             _ => ::core::hint::unreachable_unchecked(),
@@ -301,11 +301,11 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
                 old_start - new_start
             };
 
-            unsafe fn store(self, _pack: &mut #subpack_ty) {
+            unsafe fn store(self, _pack: &mut pack::RawPackedBits<_PackStart, Self>) {
                 #store_impl
             }
 
-            unsafe fn load(_pack: &#subpack_ty) -> Self {
+            unsafe fn load(_pack: &pack::RawPackedBits<_PackStart, Self>) -> Self {
                 #load_impl
             }
         }

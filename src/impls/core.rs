@@ -1,4 +1,4 @@
-use crate::{BitStart, Packable, SubPack};
+use crate::{BitStart, Packable, SubPack, RawPackedBits};
 use core::mem;
 
 unsafe impl<S: BitStart> Packable<S> for bool {
@@ -7,13 +7,13 @@ unsafe impl<S: BitStart> Packable<S> for bool {
     const WIDTH: u32 = 1;
 
     #[inline]
-    unsafe fn store(self, p: &mut SubPack<S, Self>) {
-        p.set_from_low_bits(self as usize);
+    unsafe fn store(self, p: &mut RawPackedBits<S, Self>) {
+        p.write_low_bits(self as usize);
     }
 
     #[inline]
-    unsafe fn load(p: &SubPack<S, Self>) -> Self {
-        p.get_bits() != 0
+    unsafe fn load(p: &RawPackedBits<S, Self>) -> Self {
+        p.read_unshifted_bits() != 0
     }
 }
 
@@ -23,12 +23,12 @@ unsafe impl<'a, T, S: BitStart> Packable<S> for &'a T {
     const WIDTH: u32 = usize::leading_zeros(mem::align_of::<T>() - 1);
 
     #[inline]
-    unsafe fn store(self, p: &mut SubPack<S, Self>) {
-        p.set_from_high_bits(self as *const T as usize)
+    unsafe fn store(self, p: &mut RawPackedBits<S, Self>) {
+        p.write_high_bits(self as *const T as usize)
     }
 
     #[inline]
-    unsafe fn load(p: &SubPack<S, Self>) -> Self {
-        &*(p.get_as_high_bits() as *const T)
+    unsafe fn load(p: &RawPackedBits<S, Self>) -> Self {
+        &*(p.read_high_bits() as *const T)
     }
 }

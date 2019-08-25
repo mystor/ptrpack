@@ -11,17 +11,13 @@ use core::ops::{Deref, DerefMut};
 
 pub mod impls;
 
+pub mod bitstart;
+// XXX(nika): This should be fixed eventually.
+pub use bitstart::*;
+
 /// Helper constant value of the width of a pointer in bits.
 #[doc(hidden)]
 pub const PTR_WIDTH: u32 = usize::leading_zeros(0);
-
-/// Helper method for computing the minimum of two `u32` values.
-const fn const_min(a: u32, b: u32) -> u32 {
-    let a_lt_b = (a < b) as u32;
-    let a_ge_b = (a >= b) as u32;
-
-    (a * a_lt_b) + (b * a_ge_b)
-}
 
 /// Helper method for computing the mask field constant.
 const fn const_mask(before: u32, after: u32) -> usize {
@@ -43,40 +39,6 @@ const fn const_mask(before: u32, after: u32) -> usize {
     (not_before & not_after) * nonempty
 }
 
-/// # BitStart
-pub trait BitStart {
-    const START: u32;
-}
-
-/// The default initial bit offset for a packed value.
-pub struct DefaultStart;
-impl BitStart for DefaultStart {
-    const START: u32 = PTR_WIDTH;
-}
-
-/// The next bit offset to use after a given value.
-pub struct NextStart<S, P> {
-    _marker: PhantomData<(S, P)>,
-}
-impl<S, P> BitStart for NextStart<S, P>
-where
-    S: BitStart,
-    P: Packable<S>,
-{
-    const START: u32 = S::START - P::WIDTH;
-}
-
-pub struct UnionStart<A, B> {
-    _marker: PhantomData<(A, B)>,
-}
-impl<A, B> BitStart for UnionStart<A, B>
-where
-    A: BitStart,
-    B: BitStart,
-{
-    const START: u32 = const_min(A::START, B::START);
-}
-
 /// # Packable
 pub unsafe trait Packable<S: BitStart>: Sized {
     type Packed;
@@ -85,61 +47,32 @@ pub unsafe trait Packable<S: BitStart>: Sized {
     const WIDTH: u32;
 
     /// Directly store the bits for this value into the given `SubPack`.
-    unsafe fn store(self, p: &mut SubPack<S, Self>);
+    unsafe fn store(self, p: &mut RawPackedBits<S, Self>);
 
     /// Directly read the bits for this value from the given `SubPack`.
-    unsafe fn load(p: &SubPack<S, Self>) -> Self;
+    unsafe fn load(p: &RawPackedBits<S, Self>) -> Self;
 }
 
 /// # Pack
 #[repr(transparent)]
 pub struct Pack<P> {
-    value: usize,
+    bits: usize,
     _marker: PhantomData<P>,
 }
 
 impl<P: Packable<DefaultStart>> Pack<P> {
-    pub fn new(x: P) -> Self {
-        let mut pack = <ManuallyDrop<Self>>::new(Pack {
-            value: 0,
-            _marker: PhantomData,
-        });
-
-        unsafe { x.store(pack.as_inner_pack_mut()) }
-
-        ManuallyDrop::into_inner(pack)
+    pub fn new(val: P) -> Self {
+        let mut bits = 0usize;
+        unsafe {
+            P::store(val, RawPackedBits::for_bits_mut(&mut bits));
+        }
+        Pack { bits, _marker: PhantomData }
     }
 
     pub fn into_inner(self) -> P {
-        let this = ManuallyDrop::new(self);
-        unsafe { P::load(this.as_inner_pack()) }
-    }
-
-    pub fn get(&self) -> P
-    where
-        P: Copy,
-    {
-        self.as_inner_pack().get()
-    }
-
-    /// Directly read the stored bits.
-    pub fn get_bits(&self) -> usize {
-        self.value
-    }
-
-    /// Directly write the stored bits.
-    pub unsafe fn set_bits(&mut self, bits: usize) {
-        self.value = bits;
-    }
-
-    /// Inner helper method to downcast to `SubPack` for utility methods.
-    fn as_inner_pack(&self) -> &SubPack<DefaultStart, P> {
-        unsafe { mem::transmute(self) }
-    }
-
-    /// Inner helper method to downcast to `SubPack` for utility methods.
-    fn as_inner_pack_mut(&mut self) -> &mut SubPack<DefaultStart, P> {
-        unsafe { mem::transmute(self) }
+        let bits = self.bits;
+        mem::forget(self);
+        unsafe { P::load(RawPackedBits::for_bits(&bits)) }
     }
 }
 
@@ -159,15 +92,149 @@ impl<P: Packable<DefaultStart>> DerefMut for Pack<P> {
 
 impl<P: Packable<DefaultStart>> fmt::Debug for Pack<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Pack").field(&self.get_bits()).finish()
+        f.debug_tuple("Pack").field(&self.bits).finish()
+    }
+}
+
+/// A raw reference to a slice of bits corresponding to a packed instance of
+/// `P`. This type is used by implementations of [`Packed`] to read and write
+/// bit subranges.
+///
+/// The pointer `&[mut] RawPackedBits<S, P>` must always point to a `usize`
+/// containing the target unmasked bits.
+pub struct RawPackedBits<S, P> {
+    _marker: PhantomData<(S, P)>,
+}
+
+impl<S, P> RawPackedBits<S, P>
+where
+    S: BitStart,
+    P: Packable<S>,
+{
+    /// Number of unused most signifigant bits (high bits).
+    pub const BEFORE: u32 = PTR_WIDTH - S::START;
+    /// Number of unused least signifigant bits (low bits).
+    pub const AFTER: u32 = S::START - P::WIDTH;
+    /// Mask value with a `1` for each bit in the range to be considered.
+    pub const MASK: usize = const_mask(Self::BEFORE, Self::AFTER);
+    /// Inverted version of `MASK` used to clear the specified range.
+    pub const CLEAR_MASK: usize = !Self::MASK;
+
+    /// View the bits in `usize` through a `RawPackedBits`.
+    pub unsafe fn for_bits(bits: &usize) -> &Self {
+        mem::transmute(bits)
+    }
+
+    /// Mutably view the bits in `usize` through a `RawPackedBits`.
+    pub unsafe fn for_bits_mut(bits: &mut usize) -> &mut Self {
+        mem::transmute(bits)
+    }
+
+    /// Read masked, but unshifted, bits for this value.
+    ///
+    /// See also [`Self::read_high_bits`] and [`Self::read_low_bits`].
+    pub fn read_unshifted_bits(&self) -> usize {
+        let all_bits = unsafe { *(self as *const Self as *const usize) };
+        all_bits & Self::MASK
+    }
+
+    /// Read masked bits, shifted into the most significant bits.
+    ///
+    /// Used for pointer-like values with unused "low" bits.
+    pub fn read_high_bits(&self) -> usize {
+        self.read_unshifted_bits().wrapping_shl(Self::BEFORE)
+    }
+
+    /// Read masked bits, shifted into the least significant bits.
+    ///
+    /// Used for integer-like values with unused "high" bits.
+    pub fn read_low_bits(&self) -> usize {
+        self.read_unshifted_bits().wrapping_shr(Self::AFTER)
+    }
+
+    /// Write new pre-shifted bits for this value.
+    ///
+    /// See also [`Self::write_high_bits`] and [`Self::write_low_bits`].
+    ///
+    /// # Preconditions
+    ///
+    /// `bits` must be correctly shifted into the specified bitrange, and no
+    /// bits outside of the range may be set.
+    pub unsafe fn write_unshifted_bits(&mut self, bits: usize) {
+        let all_bits = self as *mut Self as *mut usize;
+        *all_bits = (*all_bits & Self::CLEAR_MASK) | bits;
+    }
+
+    /// Write new bits for this value from the high bits of `bits`.
+    ///
+    /// Used for pointer-like values with unused "low" bits.
+    ///
+    /// # Preconditions
+    ///
+    /// Only the least signifigant `P::WIDTH` bits of `bits` may be set.
+    pub unsafe fn write_high_bits(&mut self, bits: usize) {
+        self.write_unshifted_bits(bits.wrapping_shr(Self::BEFORE));
+    }
+
+    /// Write new bits for this value from the low bits of `bits`.
+    ///
+    /// Used for integer-like values with unused "high" bits.
+    ///
+    /// # Preconditions
+    ///
+    /// Only the least signifigant `P::WIDTH` bits of `bits` may be set.
+    pub unsafe fn write_low_bits(&mut self, bits: usize) {
+        self.write_unshifted_bits(bits.wrapping_shl(Self::AFTER));
+    }
+
+    /// Load value from a subfield.
+    pub unsafe fn read_field<S_, P_>(&self) -> P_
+    where
+        S_: BitStart,
+        P_: Packable<S_>,
+    {
+        P_::load(self.as_field::<S_, P_>())
+    }
+
+    /// Store the value of a subfield. Any existing stored value will be
+    /// clobbered without invoking `Drop`.
+    pub unsafe fn write_field<S_, P_>(&mut self, value: P_)
+    where
+        S_: BitStart,
+        P_: Packable<S_>,
+    {
+        P_::store(value, self.as_field_mut::<S_, P_>());
+    }
+
+    /// Get a `RawPackedBits` for a subrange or subfield of this type.
+    pub unsafe fn as_field<S_, P_>(&self) -> &RawPackedBits<S_, P_>
+    where
+        S_: BitStart,
+        P_: Packable<S_>,
+    {
+        // XXX: Assert that we're a valid subrange. Should be a static assertion.
+        assert!(<RawPackedBits<S, P>>::BEFORE <= <RawPackedBits<S_, P_>>::BEFORE,
+        "Must cast to a subrange");
+        assert!(<RawPackedBits<S, P>>::AFTER <= <RawPackedBits<S_, P_>>::AFTER, "Must cast to a subrange");
+        mem::transmute(self)
+    }
+
+    /// Get a `RawPackedBits` for a subrange or subfield of this type.
+    pub unsafe fn as_field_mut<S_, P_>(&mut self) -> &mut RawPackedBits<S_, P_>
+    where
+        S_: BitStart,
+        P_: Packable<S_>,
+    {
+        // XXX: Assert that we're a valid subrange. Should be a static assertion.
+        assert!(<RawPackedBits<S, P>>::BEFORE <= <RawPackedBits<S_, P_>>::BEFORE, "Must cast to a subrange");
+        assert!(<RawPackedBits<S, P>>::AFTER <= <RawPackedBits<S_, P_>>::AFTER, "Must cast to a subrange");
+        mem::transmute(self)
     }
 }
 
 /// # Inner Pack
 pub struct SubPack<S, P> {
-    // This is a ZST, but always points to the start of a valid `Pack<R>` -
-    // specifically at a `usize`.
-    _marker: PhantomData<(S, P)>,
+    __raw: RawPackedBits<S, P>,
 }
 
 impl<S, P> SubPack<S, P>
@@ -175,69 +242,26 @@ where
     S: BitStart,
     P: Packable<S>,
 {
-    pub const BEFORE: u32 = PTR_WIDTH - S::START;
-    pub const AFTER: u32 = S::START - P::WIDTH;
-    pub const MASK: usize = const_mask(Self::BEFORE, Self::AFTER);
-    pub const CLEAR_MASK: usize = !Self::MASK;
-
-    /// Read the value packed within this `SubPack`.
+    /// Read a copy of the packed value.
     pub fn get(&self) -> P
     where
         P: Copy,
     {
-        unsafe { self.read_raw() }
+        unsafe { P::load(&self.__raw) }
     }
 
+    /// Set the packed value, dropping the previous value.
+    pub fn set(&mut self, new: P) {
+        self.replace(new);
+    }
+
+    /// Replace the packed value, returning the previous value.
     pub fn replace(&mut self, new: P) -> P {
         unsafe {
-            let prev = ManuallyDrop::new(self.read_raw());
-            self.write_raw(new);
+            let prev = ManuallyDrop::new(P::load(&self.__raw));
+            P::store(new, &mut self.__raw);
             ManuallyDrop::into_inner(prev)
         }
-    }
-
-    pub unsafe fn read_raw(&self) -> P {
-        P::load(self)
-    }
-
-    pub unsafe fn write_raw(&mut self, new: P) {
-        P::store(new, self)
-    }
-
-    /// Masked read of the relevant bits from the underlying type.
-    pub fn get_bits(&self) -> usize {
-        let bits_ptr = self as *const _ as *const usize;
-        unsafe { *bits_ptr & Self::MASK }
-    }
-
-    /// Masked read of the relevant bits, shifted into the high bits of the
-    /// output, like an integer.
-    pub fn get_as_high_bits(&self) -> usize {
-        self.get_bits().wrapping_shl(Self::BEFORE)
-    }
-
-    /// Masked read of the relevant bits, shifted into the low bits of the
-    /// output, like a pointer.
-    pub fn get_as_low_bits(&self) -> usize {
-        self.get_bits().wrapping_shr(Self::AFTER)
-    }
-
-    /// Unsafely clears the bits corresponding to `P` in the inner `Pack<R>`,
-    /// and sets them to the provided bits.
-    pub unsafe fn set_bits(&mut self, bits: usize) {
-        let bits_ptr = self as *mut _ as *mut usize;
-        let cleared = *bits_ptr & Self::CLEAR_MASK;
-        *bits_ptr = cleared | bits;
-    }
-
-    /// Like `set_bits`, but the bits are shifted into place first.
-    pub unsafe fn set_from_high_bits(&mut self, bits: usize) {
-        self.set_bits(bits.wrapping_shr(Self::BEFORE));
-    }
-
-    /// Like `get_bits`, but the bits are shifted into place first.
-    pub unsafe fn set_from_low_bits(&mut self, bits: usize) {
-        self.set_bits(bits.wrapping_shl(Self::AFTER));
     }
 
     /// Cast the reference down to a field.
@@ -277,7 +301,8 @@ where
     P: Packable<S>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("SubPack").field(&self.get_bits()).finish()
+        f.debug_tuple("SubPack").field(&()).finish()
+        // f.debug_tuple("SubPack").field(&self.get_bits()).finish()
     }
 }
 
