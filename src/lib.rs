@@ -16,8 +16,7 @@ pub mod bitstart;
 pub use bitstart::*;
 
 /// Helper constant value of the width of a pointer in bits.
-#[doc(hidden)]
-pub const PTR_WIDTH: u32 = usize::leading_zeros(0);
+const PTR_WIDTH: u32 = usize::leading_zeros(0);
 
 /// Helper method for computing the mask field constant.
 const fn const_mask(before: u32, after: u32) -> usize {
