@@ -6,16 +6,20 @@ use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, I
 /// The width of a pointer on the platform which is running this proc-macro.
 const HOST_PTR_WIDTH: u32 = 0usize.leading_zeros();
 
-fn struct_data(
-    name: &Ident,
-    data: &DataStruct,
-    helper_impls: &mut TokenStream,
-    store_impl: &mut TokenStream,
-    load_impl: &mut TokenStream,
-    last_bitstart: &mut TokenStream,
-) -> Result<(), Error> {
+struct Impls {
+    helper_impls: TokenStream,
+    store_impl: TokenStream,
+    load_impl: TokenStream,
+    next_bitstart: TokenStream,
+}
+
+fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
+    let mut helper_impls = TokenStream::new();
+    let mut store_impl = TokenStream::new();
     let mut dtor_body = TokenStream::new();
+    let mut load_impl = TokenStream::new();
     let mut ctor_body = TokenStream::new();
+    let mut next_bitstart = quote!(_PackStart);
     for (idx, field) in data.fields.iter().enumerate() {
         let ty = &field.ty;
         let vis = &field.vis;
@@ -26,8 +30,8 @@ fn struct_data(
         };
         let varname = format_ident!("_field_{}", fname_s);
 
-        let bitstart = last_bitstart.clone();
-        *last_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
+        let bitstart = next_bitstart.clone();
+        next_bitstart = quote!(pack::NextStart<#bitstart, #ty>);
 
         // Store Impl
         store_impl.extend(quote! {
@@ -68,7 +72,7 @@ fn struct_data(
         Fields::Unnamed(_) => quote!(#name(#dtor_body)),
         Fields::Unit => quote!(#name),
     };
-    *store_impl = quote! {
+    let store_impl = quote! {
         let #destruct = self;
         #store_impl
     };
@@ -80,17 +84,15 @@ fn struct_data(
         Fields::Unit => quote!(#name),
     });
 
-    Ok(())
+    Ok(Impls {
+        load_impl,
+        store_impl,
+        helper_impls,
+        next_bitstart,
+    })
 }
 
-fn enum_data(
-    name: &Ident,
-    data: &DataEnum,
-    helper_impls: &mut TokenStream,
-    store_impl: &mut TokenStream,
-    load_impl: &mut TokenStream,
-    last_bitstart: &mut TokenStream,
-) -> Result<(), Error> {
+fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
     // FIXME: Should there be a behaviour for packing values with non-trivial
     // enum variants (either unit or single-element tuple variants?).
     //
@@ -111,7 +113,7 @@ fn enum_data(
     let discr_ty_id = format_ident!("U{}", discr_bits);
     let discr_ty = quote!(pack::impls::#discr_ty_id);
 
-    let bitstart = last_bitstart.clone();
+    let bitstart = quote!(_PackStart);
     let mut store_arms = TokenStream::new();
     let mut load_arms = TokenStream::new();
     let mut discr_bitstart: Option<TokenStream> = None;
@@ -147,7 +149,7 @@ fn enum_data(
     }
 
     let discr_bitstart = discr_bitstart.unwrap_or_else(|| bitstart.clone());
-    *last_bitstart = quote!(pack::NextStart<#discr_bitstart, #discr_ty>);
+    let next_bitstart = quote!(pack::NextStart<#discr_bitstart, #discr_ty>);
 
     for (idx, variant) in data.variants.iter().enumerate() {
         let variant_name = &variant.ident;
@@ -179,22 +181,27 @@ fn enum_data(
         }
     }
 
-    store_impl.extend(quote! {
+    let store_impl = quote! {
         let discr = match self {
             #store_arms
         };
         _pack.as_field_mut::<#discr_bitstart, #discr_ty>().write_raw(discr);
-    });
+    };
 
-    load_impl.extend(quote! {
+    let load_impl = quote! {
         let discr = _pack.as_field::<#discr_bitstart, #discr_ty>().read_raw();
         match discr.get() {
             #load_arms
             _ => ::core::hint::unreachable_unchecked(),
         }
-    });
+    };
 
-    Ok(())
+    Ok(Impls {
+        load_impl,
+        store_impl,
+        helper_impls: TokenStream::new(),
+        next_bitstart,
+    })
 }
 
 pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
@@ -207,36 +214,18 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     let name = &input.ident;
     let vis = &input.vis;
 
-    let mut helper_impls = TokenStream::new();
-    let mut store_impl = TokenStream::new();
-    let mut load_impl = TokenStream::new();
-    let mut last_bitstart = quote!(_PackStart);
-
-    match &input.data {
-        Data::Struct(data) => {
-            struct_data(
-                name,
-                data,
-                &mut helper_impls,
-                &mut store_impl,
-                &mut load_impl,
-                &mut last_bitstart,
-            )?;
-        }
-        Data::Enum(data) => {
-            enum_data(
-                name,
-                data,
-                &mut helper_impls,
-                &mut store_impl,
-                &mut load_impl,
-                &mut last_bitstart,
-            )?;
-        }
+    let Impls {
+        helper_impls,
+        store_impl,
+        load_impl,
+        next_bitstart,
+    } = match &input.data {
+        Data::Struct(data) => struct_data(name, data)?,
+        Data::Enum(data) => enum_data(name, data)?,
         Data::Union(_) => {
             return Err(Error::new_spanned(input, "union types are unsupported"));
         }
-    }
+    };
 
     // Unfortunately, using the full types for members such as `&'a T` when
     // computing the `WIDTH` constant produces a compiler error, where the
@@ -258,7 +247,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
             Lifetime::new("'_", l.apostrophe)
         }
     }
-    let last_bitstart = InferLifetimes.fold_type(parse_quote!(#last_bitstart));
+    let next_bitstart = InferLifetimes.fold_type(parse_quote!(#next_bitstart));
 
     // Get the generics required for the impl.
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
@@ -309,7 +298,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
 
             const WIDTH: u32 = {
                 let old_start = _PackStart::START;
-                let new_start = <#last_bitstart as pack::BitStart>::START;
+                let new_start = <#next_bitstart as pack::BitStart>::START;
                 old_start - new_start
             };
 

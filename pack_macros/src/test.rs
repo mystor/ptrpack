@@ -1,4 +1,4 @@
-use crate::packable:do_derive_packable;
+use crate::packable::do_derive_packable;
 use syn::{parse_quote, DeriveInput};
 
 use std::io::Write;
@@ -32,4 +32,3 @@ fn my_test() {
 
     panic!();
 }
-
