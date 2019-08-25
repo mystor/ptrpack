@@ -1,19 +1,10 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::fold::Fold;
-use syn::{
-    parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Generics, Ident, Lifetime,
-    Type, WherePredicate,
-};
+use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Ident, Lifetime};
 
 /// The width of a pointer on the platform which is running this proc-macro.
 const HOST_PTR_WIDTH: u32 = 0usize.leading_zeros();
-
-/*
-fn add_pred(generics: &mut Generics, pred: WherePredicate) {
-    generics.make_where_clause().predicates.push(pred);
-}
-*/
 
 fn struct_data(
     name: &Ident,
@@ -124,7 +115,7 @@ fn enum_data(
     let mut store_arms = TokenStream::new();
     let mut load_arms = TokenStream::new();
     let mut discr_bitstart: Option<TokenStream> = None;
-    for (idx, variant) in data.variants.iter().enumerate() {
+    for variant in &data.variants {
         match &variant.fields {
             Fields::Named(_) => {
                 // FIXME: Better errors
@@ -271,7 +262,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
 
     // Get the generics required for the impl.
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
-    let (base_impl_generics, base_type_generics, _) = input.generics.split_for_impl();
+    let (_, base_type_generics, _) = input.generics.split_for_impl();
 
     let helper_name = format_ident!("Packed{}", name);
     let helper_ty = quote!(#helper_name #type_generics);
