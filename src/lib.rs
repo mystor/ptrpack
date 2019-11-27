@@ -95,7 +95,7 @@ impl<P: Packable<DefaultStart>> fmt::Debug for Pack<P> {
 }
 
 /// A raw reference to a slice of bits corresponding to a packed instance of
-/// `P`. This type is used by implementations of [`Packed`] to read and write
+/// `P`. This type is used by implementations of [`Packable`] to read and write
 /// bit subranges.
 ///
 /// The pointer `&[mut] RawPackedBits<S, P>` must always point to a `usize`
@@ -130,7 +130,7 @@ where
 
     /// Read masked, but unshifted, bits for this value.
     ///
-    /// See also [`Self::read_high_bits`] and [`Self::read_low_bits`].
+    /// See also [`RawPackedBits::read_high_bits`] and [`RawPackedBits::read_low_bits`].
     pub fn read_unshifted_bits(&self) -> usize {
         let all_bits = unsafe { *(self as *const Self as *const usize) };
         all_bits & Self::MASK
@@ -152,7 +152,7 @@ where
 
     /// Write new pre-shifted bits for this value.
     ///
-    /// See also [`Self::write_high_bits`] and [`Self::write_low_bits`].
+    /// See also [`RawPackedBits::write_high_bits`] and [`RawPackedBits::write_low_bits`].
     ///
     /// # Preconditions
     ///
