@@ -8,11 +8,7 @@ use core::mem;
 ///
 /// # Requirements
 ///
-/// 1. It is [`Copy`]-able.
-///
-///    Non-`Copy` types are currently unsupported due to `Drop/Copy` restrictions.
-///
-/// 2. It uses fewer bits than would normally fit into a [`usize`].
+/// 1. It uses fewer bits than would normally fit into a [`usize`].
 ///
 ///    * [`bool`] uses only 1 bit, leaving the high 31 (or 63) bits as `0`.
 ///
@@ -25,9 +21,9 @@ use core::mem;
 ///      Use the helper [`Aligned`](crate::Aligned) type to promise raw pointer
 ///      alignment.
 ///
-/// 3. Unused bits in the type's bit-representation are unconditionally `0`
+/// 2. Unused bits in the type's bit-representation are unconditionally `0`
 ///    bits.
-pub unsafe trait Packable: Copy {
+pub unsafe trait Packable {
     /// Which end of the value significant bits are stored at.
     ///
     /// This type parameter will be either:

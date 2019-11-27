@@ -41,8 +41,8 @@ impl<T: detail::PackableTuple> PtrPack<T> {
     }
 }
 
-impl<T: detail::PackableTuple> Copy for PtrPack<T> {}
-impl<T: detail::PackableTuple> Clone for PtrPack<T> {
+impl<T: detail::PackableTuple + Copy> Copy for PtrPack<T> {}
+impl<T: detail::PackableTuple + Copy> Clone for PtrPack<T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -70,7 +70,7 @@ impl<T: detail::PackableTuple> hash::Hash for PtrPack<T> {
     }
 }
 
-impl<T: detail::PackableTuple + fmt::Debug> fmt::Debug for PtrPack<T> {
+impl<T: detail::PackableTuple + Copy + fmt::Debug> fmt::Debug for PtrPack<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("PtrPack").field(&self.to_tuple()).finish()
     }

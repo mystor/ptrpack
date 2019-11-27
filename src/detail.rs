@@ -180,7 +180,7 @@ impl BitAlign for HighBits {
 /// exclusively [`Packable`] elements.
 ///
 /// See the [`PtrPack`] documentation for details.
-pub unsafe trait PackableTuple: Copy {
+pub unsafe trait PackableTuple {
     // Are packed values of this type nullable?
     // detail::{Nullable,NonNull}Storage depending.
     #[doc(hidden)]

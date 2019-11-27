@@ -1,4 +1,5 @@
 use crate::{detail, Packable, PtrPack};
+use core::marker;
 
 const fn const_max(x: u32, y: u32) -> u32 {
     // FIXME: This is gross, but we can't branch.
@@ -16,33 +17,34 @@ const fn const_max(x: u32, y: u32) -> u32 {
 ///
 /// See also [`TinyEither`] for a tagged `Packable` union.
 #[derive(Copy, Clone)]
-pub union TinyUnion<L: Packable, R: Packable> {
-    pub left: PtrPack<(L,)>,
-    pub right: PtrPack<(R,)>,
-
-    /// raw bits getter variant for type punning.
+pub struct TinyUnion<L: Packable, R: Packable> {
     bits: usize,
+    _marker: marker::PhantomData<(L, R)>,
 }
 
 impl<L: Packable, R: Packable> TinyUnion<L, R> {
     pub fn from_left(left: L) -> Self {
         TinyUnion {
-            left: PtrPack::new((left,)),
+            bits: PtrPack::<(L,)>::new((left,)).to_bits(),
+            _marker: marker::PhantomData,
         }
     }
 
     pub fn from_right(right: R) -> Self {
         TinyUnion {
-            right: PtrPack::new((right,)),
+            bits: PtrPack::<(R,)>::new((right,)).to_bits(),
+            _marker: marker::PhantomData,
         }
     }
 
     pub unsafe fn as_left(self) -> L {
-        self.left.get_0()
+        PtrPack::<(L,)>::from_bits(self.bits).get_0()
+        // self.left.get_0()
     }
 
     pub unsafe fn as_right(self) -> R {
-        self.right.get_0()
+        PtrPack::<(R,)>::from_bits(self.bits).get_0()
+        //self.right.get_0()
     }
 }
 
@@ -61,10 +63,10 @@ unsafe impl<L: Packable, R: Packable> Packable for TinyUnion<L, R> {
     );
 
     unsafe fn from_bits(bits: usize) -> Self {
-        TinyUnion { bits }
+        TinyUnion { bits, _marker: marker::PhantomData }
     }
     fn to_bits(self) -> usize {
-        unsafe { self.bits }
+        self.bits
     }
 }
 
@@ -79,7 +81,6 @@ pub enum Either<L, R> {
 }
 
 /// [`Packable`] Enum of two `Packable` types.
-#[derive(Copy, Clone)]
 pub struct TinyEither<L: Packable, R: Packable> {
     // FIXME: If `L` uses `NonNullStorage`, then our `TinyUnion` should be able
     // to use it. We don't care about `R`, as even if it's nullable, the value
@@ -87,7 +88,7 @@ pub struct TinyEither<L: Packable, R: Packable> {
     value: PtrPack<(TinyUnion<L, R>, bool)>,
 }
 
-impl<L: Packable, R: Packable> TinyEither<L, R> {
+impl<L: Packable + Copy, R: Packable + Copy> TinyEither<L, R> {
     pub fn new(either: Either<L, R>) -> Self {
         match either {
             Either::Left(left) => Self::from_left(left),
@@ -107,11 +108,11 @@ impl<L: Packable, R: Packable> TinyEither<L, R> {
         }
     }
 
-    pub fn is_left(self) -> bool {
+    pub fn is_left(&self) -> bool {
         !self.is_right()
     }
 
-    pub fn is_right(self) -> bool {
+    pub fn is_right(&self) -> bool {
         self.value.get_1()
     }
 
@@ -149,6 +150,13 @@ impl<L: Packable, R: Packable> TinyEither<L, R> {
         } else {
             Either::Right(unsafe { self.as_right_unchecked() })
         }
+    }
+}
+
+impl<L: Packable + Copy, R: Packable + Copy> Copy for TinyEither<L, R> { }
+impl<L: Packable + Copy, R: Packable + Copy> Clone for TinyEither<L, R> {
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
