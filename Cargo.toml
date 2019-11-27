@@ -1,11 +1,11 @@
 [package]
-name = "pack"
+name = "ptrpack"
 version = "0.1.0"
 authors = ["Nika Layzell <nika@thelayzells.com>"]
 edition = "2018"
 
 [workspace]
-members = [ "pack_macros" ]
+members = [ "ptrpack_macros" ]
 
 [features]
 default = ["std"]
@@ -13,4 +13,4 @@ std = ["alloc"]
 alloc = []
 
 [dependencies]
-pack_macros = { version = "0.1.0", path = "pack_macros" }
+ptrpack_macros = { version = "0.1.0", path = "ptrpack_macros" }

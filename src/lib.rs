@@ -11,6 +11,8 @@ use core::ops::{Deref, DerefMut};
 
 use bitstart::{BitStart, DefaultStart};
 
+pub use ptrpack_macros::Packable;
+
 pub mod impls;
 pub mod bitstart;
 

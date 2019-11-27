@@ -1,7 +1,6 @@
 extern crate std;
 
-use pack::Pack;
-use pack_macros::Packable;
+use ptrpack::{Pack, Packable};
 
 #[derive(Packable)]
 struct Something<'a, T> {

@@ -32,7 +32,7 @@ fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
         let varname = format_ident!("_field_{}", fname_s, span = field.span());
 
         let bitstart = next_bitstart.clone();
-        next_bitstart = quote!(pack::bitstart::NextStart<#bitstart, #ty>);
+        next_bitstart = quote!(ptrpack::bitstart::NextStart<#bitstart, #ty>);
 
         // Store Impl
         store_impl.extend(quote! {
@@ -58,11 +58,11 @@ fn struct_data(name: &Ident, data: &DataStruct) -> Result<Impls, Error> {
         helper_impls.extend(quote! {
             // It'd be lovely if I could use associated types here - these decls
             // can end up really long!
-            #vis fn #get_field(&self) -> &<#ty as pack::Packable<#bitstart>>::Packed {
+            #vis fn #get_field(&self) -> &<#ty as ptrpack::Packable<#bitstart>>::Packed {
                 unsafe { self.inner.as_field::<#bitstart, #ty>().as_packed() }
             }
 
-            #vis fn #get_field_mut(&mut self) -> &mut <#ty as pack::Packable<#bitstart>>::Packed {
+            #vis fn #get_field_mut(&mut self) -> &mut <#ty as ptrpack::Packable<#bitstart>>::Packed {
                 unsafe { self.inner.as_field_mut::<#bitstart, #ty>().as_packed_mut() }
             }
         });
@@ -112,7 +112,7 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
         ));
     }
     let discr_ty_id = format_ident!("U{}", discr_bits);
-    let discr_ty = quote!(pack::impls::#discr_ty_id);
+    let discr_ty = quote!(ptrpack::impls::#discr_ty_id);
 
     let bitstart = quote!(_PackStart);
     let mut store_arms = TokenStream::new();
@@ -138,9 +138,9 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
 
                 // Update bitstart value for the discriminant.
                 let ty = &fields.unnamed[0].ty;
-                let after_bitstart = quote!(pack::bitstart::NextStart<#bitstart, #ty>);
+                let after_bitstart = quote!(ptrpack::bitstart::NextStart<#bitstart, #ty>);
                 discr_bitstart = discr_bitstart
-                    .map(|bs| quote!(pack::bitstart::UnionStart<#bs, #after_bitstart>))
+                    .map(|bs| quote!(ptrpack::bitstart::UnionStart<#bs, #after_bitstart>))
                     .or_else(|| Some(after_bitstart.clone()));
             }
             Fields::Unit => {}
@@ -148,7 +148,7 @@ fn enum_data(name: &Ident, data: &DataEnum) -> Result<Impls, Error> {
     }
 
     let discr_bitstart = discr_bitstart.unwrap_or_else(|| bitstart.clone());
-    let next_bitstart = quote!(pack::bitstart::NextStart<#discr_bitstart, #discr_ty>);
+    let next_bitstart = quote!(ptrpack::bitstart::NextStart<#discr_bitstart, #discr_ty>);
 
     for (idx, variant) in data.variants.iter().enumerate() {
         let variant_name = &variant.ident;
@@ -208,7 +208,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     let mut generics = input.generics.clone();
     generics
         .params
-        .push(parse_quote!(_PackStart: pack::bitstart::BitStart));
+        .push(parse_quote!(_PackStart: ptrpack::bitstart::BitStart));
 
     let name = &input.ident;
     let vis = &input.vis;
@@ -255,7 +255,7 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
     let helper_name = format_ident!("Packed{}", name);
     let helper_ty = quote!(#helper_name #type_generics);
     let target_ty = quote!(#name #base_type_generics);
-    let subpack_ty = quote!(pack::SubPack<_PackStart, #target_ty>);
+    let subpack_ty = quote!(ptrpack::SubPack<_PackStart, #target_ty>);
     let result = quote! {
         #vis struct #helper_name #generics #where_clause {
             inner: #subpack_ty,
@@ -292,20 +292,20 @@ pub fn do_derive_packable(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
         }
 
-        unsafe impl #impl_generics pack::Packable<_PackStart> for #target_ty #where_clause {
+        unsafe impl #impl_generics ptrpack::Packable<_PackStart> for #target_ty #where_clause {
             type Packed = #helper_ty;
 
             const WIDTH: u32 = {
                 let old_start = _PackStart::START;
-                let new_start = <#next_bitstart as pack::bitstart::BitStart>::START;
+                let new_start = <#next_bitstart as ptrpack::bitstart::BitStart>::START;
                 old_start - new_start
             };
 
-            unsafe fn store(self, _pack: &mut pack::RawPackedBits<_PackStart, Self>) {
+            unsafe fn store(self, _pack: &mut ptrpack::RawPackedBits<_PackStart, Self>) {
                 #store_impl
             }
 
-            unsafe fn load(_pack: &pack::RawPackedBits<_PackStart, Self>) -> Self {
+            unsafe fn load(_pack: &ptrpack::RawPackedBits<_PackStart, Self>) -> Self {
                 #load_impl
             }
         }
