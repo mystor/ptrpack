@@ -5,6 +5,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 #[test]
+#[ignore]
 fn my_test() {
     let input: DeriveInput = parse_quote! {
         struct Something<T> {

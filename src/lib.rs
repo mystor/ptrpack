@@ -301,8 +301,7 @@ where
     P: Packable<S>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("SubPack").field(&()).finish()
-        // f.debug_tuple("SubPack").field(&self.get_bits()).finish()
+        f.debug_tuple("SubPack").field(&self.__raw.read_low_bits()).finish()
     }
 }
 

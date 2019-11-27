@@ -10,11 +10,12 @@ mod packable;
 pub fn derive_packable(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let stream: proc_macro::TokenStream = match packable::do_derive_packable(&input) {
-        Ok(expanded) => expanded.into(),
-        Err(error) => error.to_compile_error().into(),
+    let stream = match packable::do_derive_packable(&input) {
+        Ok(expanded) => expanded,
+        Err(error) => error.to_compile_error(),
     };
 
+    /* Sketchy debug output printing.
     if true {
         use std::io::Write;
         use std::process::{Command, Stdio};
@@ -32,8 +33,9 @@ pub fn derive_packable(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
         child.stdin = None;
         child.wait().unwrap();
     }
+    */
 
-    stream
+    stream.into()
 }
 
 #[cfg(test)]
