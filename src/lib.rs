@@ -13,8 +13,8 @@ use bitstart::{BitStart, DefaultStart};
 
 pub use ptrpack_macros::Packable;
 
-pub mod impls;
 pub mod bitstart;
+pub mod impls;
 
 /// Helper constant value of the width of a pointer in bits.
 const PTR_WIDTH: u32 = usize::leading_zeros(0);
@@ -66,7 +66,10 @@ impl<P: Packable<DefaultStart>> Pack<P> {
         unsafe {
             P::store(val, RawPackedBits::for_bits_mut(&mut bits));
         }
-        Pack { bits, _marker: PhantomData }
+        Pack {
+            bits,
+            _marker: PhantomData,
+        }
     }
 
     pub fn into_inner(self) -> P {
@@ -213,9 +216,14 @@ where
         P_: Packable<S_>,
     {
         // XXX: Assert that we're a valid subrange. Should be a static assertion.
-        assert!(<RawPackedBits<S, P>>::BEFORE <= <RawPackedBits<S_, P_>>::BEFORE,
-        "Must cast to a subrange");
-        assert!(<RawPackedBits<S, P>>::AFTER <= <RawPackedBits<S_, P_>>::AFTER, "Must cast to a subrange");
+        assert!(
+            <RawPackedBits<S, P>>::BEFORE <= <RawPackedBits<S_, P_>>::BEFORE,
+            "Must cast to a subrange"
+        );
+        assert!(
+            <RawPackedBits<S, P>>::AFTER <= <RawPackedBits<S_, P_>>::AFTER,
+            "Must cast to a subrange"
+        );
         mem::transmute(self)
     }
 
@@ -226,8 +234,14 @@ where
         P_: Packable<S_>,
     {
         // XXX: Assert that we're a valid subrange. Should be a static assertion.
-        assert!(<RawPackedBits<S, P>>::BEFORE <= <RawPackedBits<S_, P_>>::BEFORE, "Must cast to a subrange");
-        assert!(<RawPackedBits<S, P>>::AFTER <= <RawPackedBits<S_, P_>>::AFTER, "Must cast to a subrange");
+        assert!(
+            <RawPackedBits<S, P>>::BEFORE <= <RawPackedBits<S_, P_>>::BEFORE,
+            "Must cast to a subrange"
+        );
+        assert!(
+            <RawPackedBits<S, P>>::AFTER <= <RawPackedBits<S_, P_>>::AFTER,
+            "Must cast to a subrange"
+        );
         mem::transmute(self)
     }
 }
@@ -301,7 +315,9 @@ where
     P: Packable<S>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("SubPack").field(&self.__raw.read_low_bits()).finish()
+        f.debug_tuple("SubPack")
+            .field(&self.__raw.read_low_bits())
+            .finish()
     }
 }
 

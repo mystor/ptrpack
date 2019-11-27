@@ -1,7 +1,7 @@
 //! Helper types and impls only used if the `alloc` feature is enabled.
 
-use crate::{Packable, SubPack, RawPackedBits};
 use crate::bitstart::BitStart;
+use crate::{Packable, RawPackedBits, SubPack};
 
 use alloc::boxed::Box;
 use core::mem;

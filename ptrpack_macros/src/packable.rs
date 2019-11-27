@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::fold::Fold;
-use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Ident, Lifetime};
 use syn::spanned::Spanned;
+use syn::{parse_quote, Data, DataEnum, DataStruct, DeriveInput, Error, Fields, Ident, Lifetime};
 
 /// The width of a pointer on the platform which is running this proc-macro.
 const HOST_PTR_WIDTH: u32 = 0usize.leading_zeros();

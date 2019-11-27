@@ -1,5 +1,5 @@
-use crate::{Packable, SubPack, RawPackedBits};
 use crate::BitStart;
+use crate::{Packable, RawPackedBits, SubPack};
 use core::fmt;
 
 macro_rules! tiny_decl {

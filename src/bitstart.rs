@@ -2,7 +2,7 @@
 //!
 //! It is usually unnecessary to use the types defined in this module directly.
 
-use crate::{PTR_WIDTH, Packable};
+use crate::{Packable, PTR_WIDTH};
 
 mod sealed {
     pub trait Sealed {}
@@ -10,7 +10,7 @@ mod sealed {
 
 /// Where in the packed value to start reading bits. Types implementing this
 /// trait are generally obtained using [`NextStart`] and [`UnionStart`].
-pub trait BitStart : sealed::Sealed {
+pub trait BitStart: sealed::Sealed {
     /// The most significant bit of a range.
     ///
     /// The `START` value of the most significant bit of a `usize` is the
